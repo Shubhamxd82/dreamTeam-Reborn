@@ -1,4 +1,4 @@
-# (c) Mr. Vishal & @harshil8981
+# (c) Nexus Shubhu & @harshil8981 — Enhanced V2
 
 import datetime
 from configs import Config
@@ -11,10 +11,11 @@ async def handle_user_status(bot, cmd):
     chat_id = cmd.from_user.id
     if not await db.is_user_exist(chat_id):
         await db.add_user(chat_id)
-        await bot.send_message(
-            Config.LOG_CHANNEL,
-            f"#NEW_USER: \n\nNew User [{cmd.from_user.first_name}](tg://user?id={cmd.from_user.id}) started @{Config.BOT_USERNAME} !!"
-        )
+        if Config.LOG_CHANNEL:
+            await bot.send_message(
+                int(Config.LOG_CHANNEL),
+                f"#NEW_USER: \n\nNew User [{cmd.from_user.first_name}](tg://user?id={cmd.from_user.id}) started @{Config.BOT_USERNAME} !!"
+            )
 
     ban_status = await db.get_ban_status(chat_id)
     if ban_status["is_banned"]:
@@ -23,6 +24,8 @@ async def handle_user_status(bot, cmd):
         ).days > ban_status["ban_duration"]:
             await db.remove_ban(chat_id)
         else:
-            await cmd.reply_text("You R Banned!.. Contact @HP_Bot_discuss_group 😝", quote=True)
+            from handlers.languages import get_text
+            lang = await db.get_language(chat_id)
+            await cmd.reply_text(get_text(lang, "banned_msg"), quote=True)
             return
     await cmd.continue_propagation()
