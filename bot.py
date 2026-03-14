@@ -17,12 +17,12 @@ from configs import Config
 from handlers.database import db
 from handlers.add_user_to_db import add_user_to_database
 from handlers.send_file import send_media_and_reply
-from handlers.helpers import b64_to_str, str_to_b64
+from handlers.helpers import b64_to_str, str_to_b64, format_time_seconds
 from handlers.check_user_status import handle_user_status
 from handlers.force_sub_handler import handle_force_sub, get_invite_link
 from handlers.broadcast_handlers import main_broadcast_handler
 from handlers.save_media import save_media_in_channel, save_batch_media_in_channel
-from handlers.languages import get_text, get_all_lang_codes, get_lang_name, LANGUAGES
+from handlers.languages import get_text, get_all_lang_codes, get_lang_name
 from handlers.token_handler import check_token, verify_user_token, get_token_msg
 from handlers.admin_handler import (
     is_authorized,
@@ -32,7 +32,11 @@ from handlers.admin_handler import (
 )
 from handlers.clone_handler import clone_handler, remove_clone_handler, restart_all_clones
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
 
 MediaList = {}
 
@@ -45,8 +49,8 @@ Bot = Client(
 )
 
 
-# ==================== USER STATUS HANDLER ====================
-@Bot.on_message(filters.private)
+# ==================== USER STATUS (GROUP 0 — runs first) ====================
+@Bot.on_message(filters.private, group=0)
 async def _(bot: Client, cmd: Message):
     await handle_user_status(bot, cmd)
 
@@ -59,36 +63,19 @@ async def start(bot: Client, cmd: Message):
         await cmd.reply_text("Sorry, You are banned.")
         return
 
-    # Feature 5: Multi Force Sub
+    # Multi Force Sub check
     force_channels = Config.get_force_sub_channels()
     if force_channels:
         back = await handle_force_sub(bot, cmd)
         if back == 400:
             return
 
-    usr_cmd = cmd.text.split("_", 1)[-1]
+    # Parse the start parameter
+    # Links can be: /start, /start mrkiller_XXXX, /start verify-TOKEN-USERID
+    raw_text = cmd.text.strip()
 
-    # Feature 7: Token Verification - Handle verify callback
-    if usr_cmd.startswith("verify"):
-        parts = usr_cmd.split("_")
-        if len(parts) >= 3:
-            token = parts[1]
-            try:
-                user_id = int(parts[2])
-            except:
-                user_id = cmd.from_user.id
-            if user_id == cmd.from_user.id:
-                await verify_user_token(cmd.from_user.id, token)
-                lang = await db.get_language(cmd.from_user.id)
-                from handlers.helpers import format_time_seconds
-                time_str = format_time_seconds(Config.TOKEN_TIMEOUT)
-                await cmd.reply_text(
-                    get_text(lang, "token_verified").format(time=time_str),
-                    quote=True
-                )
-            return
-
-    if usr_cmd == "/start":
+    if raw_text == "/start":
+        # Normal start — show welcome
         await add_user_to_database(bot, cmd)
         lang = await db.get_language(cmd.from_user.id)
 
@@ -112,58 +99,122 @@ async def start(bot: Client, cmd: Message):
             id=cmd.from_user.id
         )
 
-        # Feature 3: Custom Start Message with Image
         if Config.START_PIC:
-            await cmd.reply_photo(
-                photo=Config.START_PIC,
-                caption=start_text,
-                reply_markup=InlineKeyboardMarkup(buttons)
-            )
+            try:
+                await cmd.reply_photo(
+                    photo=Config.START_PIC,
+                    caption=start_text,
+                    reply_markup=InlineKeyboardMarkup(buttons)
+                )
+            except Exception:
+                await cmd.reply_text(
+                    start_text,
+                    disable_web_page_preview=True,
+                    reply_markup=InlineKeyboardMarkup(buttons)
+                )
         else:
             await cmd.reply_text(
                 start_text,
                 disable_web_page_preview=True,
                 reply_markup=InlineKeyboardMarkup(buttons)
             )
-    else:
-        try:
-            # Feature 7: Token Verification Check
-            if Config.TOKEN_VERIFICATION:
-                is_verified = await check_token(cmd.from_user.id)
-                if not is_verified:
-                    lang = await db.get_language(cmd.from_user.id)
-                    text, short_link, token = await get_token_msg(
-                        cmd.from_user.id, Config.BOT_USERNAME
-                    )
+        return
+
+    # Has a start parameter
+    start_param = raw_text.split(None, 1)[1] if len(raw_text.split()) > 1 else ""
+
+    if not start_param:
+        return
+
+    # Handle token verification: verify-TOKEN-USERID
+    if start_param.startswith("verify"):
+        parts = start_param.split("-")
+        if len(parts) >= 3:
+            token = parts[1]
+            try:
+                verify_user_id = int(parts[2])
+            except (ValueError, IndexError):
+                verify_user_id = cmd.from_user.id
+
+            if verify_user_id == cmd.from_user.id:
+                success = await verify_user_token(cmd.from_user.id, token)
+                lang = await db.get_language(cmd.from_user.id)
+                if success:
+                    time_str = format_time_seconds(Config.TOKEN_TIMEOUT)
                     await cmd.reply_text(
-                        text,
-                        reply_markup=InlineKeyboardMarkup([
-                            [InlineKeyboardButton(
-                                get_text(lang, "verify_button"),
-                                url=short_link
-                            )]
-                        ]),
-                        disable_web_page_preview=True,
+                        get_text(lang, "token_verified").format(time=time_str),
                         quote=True
                     )
-                    return
-
-            try:
-                file_id = int(b64_to_str(usr_cmd).split("_")[-1])
-            except (Error, UnicodeDecodeError):
-                file_id = int(usr_cmd.split("_")[-1])
-
-            GetMessage = await bot.get_messages(chat_id=Config.DB_CHANNEL, message_ids=file_id)
-            message_ids = []
-            if GetMessage.text:
-                message_ids = GetMessage.text.split(" ")
+                else:
+                    await cmd.reply_text("❌ Verification failed. Please try again.", quote=True)
             else:
-                message_ids.append(int(GetMessage.id))
-            for i in range(len(message_ids)):
-                await send_media_and_reply(bot, user_id=cmd.from_user.id, file_id=int(message_ids[i]))
-        except Exception as err:
-            lang = await db.get_language(cmd.from_user.id)
-            await cmd.reply_text(get_text(lang, "error_msg").format(err=err))
+                await cmd.reply_text("❌ This verification link is not for you.", quote=True)
+        return
+
+    # Handle file access: mrkiller_ENCODED or just ENCODED
+    try:
+        await add_user_to_database(bot, cmd)
+
+        # Token verification check
+        if Config.TOKEN_VERIFICATION:
+            is_verified = await check_token(cmd.from_user.id)
+            if not is_verified:
+                lang = await db.get_language(cmd.from_user.id)
+                text, short_link, token = await get_token_msg(
+                    cmd.from_user.id, Config.BOT_USERNAME
+                )
+                await cmd.reply_text(
+                    text,
+                    reply_markup=InlineKeyboardMarkup([
+                        [InlineKeyboardButton(
+                            get_text(lang, "verify_button"),
+                            url=short_link
+                        )]
+                    ]),
+                    disable_web_page_preview=True,
+                    quote=True
+                )
+                return
+
+        # Decode file ID
+        # Format: mrkiller_BASE64ENCODED
+        if start_param.startswith("mrkiller_"):
+            encoded_part = start_param.split("mrkiller_", 1)[1]
+        else:
+            encoded_part = start_param
+
+        try:
+            file_id = int(b64_to_str(encoded_part))
+        except (Error, UnicodeDecodeError, ValueError):
+            try:
+                file_id = int(encoded_part)
+            except ValueError:
+                await cmd.reply_text("❌ Invalid link!", quote=True)
+                return
+
+        GetMessage = await bot.get_messages(chat_id=Config.DB_CHANNEL, message_ids=file_id)
+
+        if not GetMessage:
+            await cmd.reply_text("❌ File not found!", quote=True)
+            return
+
+        message_ids = []
+        if GetMessage.text:
+            message_ids = [mid.strip() for mid in GetMessage.text.split() if mid.strip()]
+        else:
+            message_ids.append(str(GetMessage.id))
+
+        for mid in message_ids:
+            try:
+                await send_media_and_reply(bot, user_id=cmd.from_user.id, file_id=int(mid))
+            except (ValueError, Exception) as e:
+                logger.error(f"Error sending file {mid}: {e}")
+                continue
+
+    except Exception as err:
+        logger.error(f"Start command error: {err}")
+        lang = await db.get_language(cmd.from_user.id)
+        await cmd.reply_text(get_text(lang, "error_msg").format(err=err))
 
 
 # ==================== FILE HANDLER ====================
@@ -174,7 +225,6 @@ async def main(bot: Client, message: Message):
 
         await add_user_to_database(bot, message)
 
-        # Feature 5: Multi Force Sub
         force_channels = Config.get_force_sub_channels()
         if force_channels:
             back = await handle_force_sub(bot, message)
@@ -185,8 +235,7 @@ async def main(bot: Client, message: Message):
             await message.reply_text("Sorry, You are banned!", disable_web_page_preview=True)
             return
 
-        if Config.OTHER_USERS_CAN_SAVE_FILE is False:
-            # Check if user is admin
+        if not Config.OTHER_USERS_CAN_SAVE_FILE:
             if not await is_authorized(message.from_user.id):
                 return
 
@@ -200,22 +249,29 @@ async def main(bot: Client, message: Message):
             quote=True,
             disable_web_page_preview=True
         )
+
     elif message.chat.type == enums.ChatType.CHANNEL:
-        if (message.chat.id == int(Config.LOG_CHANNEL)) or message.forward_from_chat or message.forward_from:
+        # Skip log channel, updates channel, forwarded messages
+        if Config.LOG_CHANNEL and message.chat.id == int(Config.LOG_CHANNEL):
             return
-        # Check UPDATES_CHANNEL only if it's set
-        if Config.UPDATES_CHANNEL and message.chat.id == int(Config.UPDATES_CHANNEL):
+        if Config.UPDATES_CHANNEL and Config.UPDATES_CHANNEL.strip():
+            try:
+                if message.chat.id == int(Config.UPDATES_CHANNEL):
+                    return
+            except ValueError:
+                pass
+        if message.forward_from_chat or message.forward_from:
             return
         if int(message.chat.id) in Config.BANNED_CHAT_IDS:
             await bot.leave_chat(message.chat.id)
             return
 
-        # Feature 4: Disable Channel Button
+        # Disable Channel Button feature
         if Config.DISABLE_CHANNEL_BUTTON:
             try:
                 await message.forward(Config.DB_CHANNEL)
             except Exception as err:
-                logging.error(f"Channel forward error: {err}")
+                logger.error(f"Channel forward (no button) error: {err}")
             return
 
         try:
@@ -230,30 +286,39 @@ async def main(bot: Client, message: Message):
             )
             if message.chat.username:
                 await forwarded_msg.reply_text(
-                    f"#CHANNEL_BUTTON:\n\n[{message.chat.title}](https://t.me/{message.chat.username}/{CH_edit.id}) Channel's Broadcasted File's Button Added!"
+                    f"#CHANNEL_BUTTON:\n\n[{message.chat.title}](https://t.me/{message.chat.username}/{CH_edit.id}) Channel's Button Added!"
                 )
             else:
                 private_ch = str(message.chat.id)[4:]
                 await forwarded_msg.reply_text(
-                    f"#CHANNEL_BUTTON:\n\n[{message.chat.title}](https://t.me/c/{private_ch}/{CH_edit.id}) Channel's Broadcasted File's Button Added!"
+                    f"#CHANNEL_BUTTON:\n\n[{message.chat.title}](https://t.me/c/{private_ch}/{CH_edit.id}) Channel's Button Added!"
                 )
         except FloodWait as sl:
             await asyncio.sleep(sl.value)
-            await bot.send_message(
-                chat_id=int(Config.LOG_CHANNEL),
-                text=f"#FloodWait:\nGot FloodWait of `{str(sl.value)}s` from `{str(message.chat.id)}` !!",
-                disable_web_page_preview=True
-            )
+            if Config.LOG_CHANNEL:
+                await bot.send_message(
+                    chat_id=int(Config.LOG_CHANNEL),
+                    text=f"#FloodWait:\nGot FloodWait of `{str(sl.value)}s` from `{str(message.chat.id)}` !!",
+                    disable_web_page_preview=True
+                )
         except Exception as err:
-            await bot.leave_chat(message.chat.id)
-            await bot.send_message(
-                chat_id=int(Config.LOG_CHANNEL),
-                text=f"#ERROR_TRACEBACK:\nGot Error from `{str(message.chat.id)}` !!\n\n**Traceback:** `{err}`",
-                disable_web_page_preview=True
-            )
+            logger.error(f"Channel handler error: {err}")
+            try:
+                await bot.leave_chat(message.chat.id)
+            except Exception:
+                pass
+            if Config.LOG_CHANNEL:
+                try:
+                    await bot.send_message(
+                        chat_id=int(Config.LOG_CHANNEL),
+                        text=f"#ERROR_TRACEBACK:\nFrom `{str(message.chat.id)}`\n\n**Traceback:** `{err}`",
+                        disable_web_page_preview=True
+                    )
+                except Exception:
+                    pass
 
 
-# ==================== ADMIN COMMANDS (Feature 9) ====================
+# ==================== ADMIN COMMANDS ====================
 @Bot.on_message(filters.private & filters.command("addadmin"))
 async def addadmin_cmd(bot: Client, m: Message):
     await add_admin_handler(bot, m)
@@ -269,7 +334,7 @@ async def admins_cmd(bot: Client, m: Message):
     await list_admins_handler(bot, m)
 
 
-# ==================== BROADCAST (Enhanced for multi-admin) ====================
+# ==================== BROADCAST ====================
 @Bot.on_message(filters.private & filters.command("broadcast") & filters.reply)
 async def broadcast_handler_open(bot: Client, m: Message):
     if not await is_authorized(m.from_user.id):
@@ -279,7 +344,7 @@ async def broadcast_handler_open(bot: Client, m: Message):
     await main_broadcast_handler(m, db)
 
 
-# ==================== STATUS (Enhanced for multi-admin) ====================
+# ==================== STATUS ====================
 @Bot.on_message(filters.private & filters.command("status"))
 async def sts(bot: Client, m: Message):
     if not await is_authorized(m.from_user.id):
@@ -293,7 +358,7 @@ async def sts(bot: Client, m: Message):
     )
 
 
-# ==================== BAN/UNBAN (Enhanced for multi-admin) ====================
+# ==================== BAN USER ====================
 @Bot.on_message(filters.private & filters.command("ban_user"))
 async def ban(c: Client, m: Message):
     if not await is_authorized(m.from_user.id):
@@ -303,42 +368,39 @@ async def ban(c: Client, m: Message):
 
     if len(m.command) == 1:
         await m.reply_text(
-            f"Use this command to ban any user from the bot.\n\n"
-            f"Usage:\n\n"
-            f"`/ban_user user_id ban_duration ban_reason`\n\n"
-            f"Eg: `/ban_user 1234567 28 You misused me.`\n"
-            f"This will ban user with id `1234567` for `28` days for the reason `You misused me`.",
+            "**Usage:** `/ban_user user_id ban_duration ban_reason`\n\n"
+            "**Example:** `/ban_user 1234567 28 You misused me.`\n"
+            "This bans user `1234567` for `28` days.",
             quote=True
         )
         return
 
     try:
         user_id = int(m.command[1])
-        ban_duration = int(m.command[2])
-        ban_reason = ' '.join(m.command[3:])
-        ban_log_text = f"Banning user {user_id} for {ban_duration} days for the reason {ban_reason}."
+        ban_duration = int(m.command[2]) if len(m.command) > 2 else 0
+        ban_reason = ' '.join(m.command[3:]) if len(m.command) > 3 else "No reason given"
+
+        ban_log_text = f"Banning user `{user_id}` for `{ban_duration}` days.\n**Reason:** {ban_reason}"
+
         try:
             await c.send_message(
                 user_id,
-                f"You are banned to use this bot for **{ban_duration}** day(s) for the reason __{ban_reason}__ \n\n"
-                f"**Message from the admin**"
+                f"You are banned for **{ban_duration}** day(s).\n**Reason:** __{ban_reason}__"
             )
-            ban_log_text += '\n\nUser notified successfully!'
-        except:
-            traceback.print_exc()
-            ban_log_text += f"\n\nUser notification failed! \n\n`{traceback.format_exc()}`"
+            ban_log_text += '\n\n✅ User notified.'
+        except Exception:
+            ban_log_text += '\n\n⚠️ User notification failed.'
 
         await db.ban_user(user_id, ban_duration, ban_reason)
-        print(ban_log_text)
         await m.reply_text(ban_log_text, quote=True)
-    except:
-        traceback.print_exc()
-        await m.reply_text(
-            f"Error occurred! Traceback given below\n\n`{traceback.format_exc()}`",
-            quote=True
-        )
+
+    except (ValueError, IndexError):
+        await m.reply_text("❌ Invalid format! Use: `/ban_user user_id days reason`", quote=True)
+    except Exception:
+        await m.reply_text(f"❌ Error:\n\n`{traceback.format_exc()}`", quote=True)
 
 
+# ==================== UNBAN USER ====================
 @Bot.on_message(filters.private & filters.command("unban_user"))
 async def unban(c: Client, m: Message):
     if not await is_authorized(m.from_user.id):
@@ -348,34 +410,32 @@ async def unban(c: Client, m: Message):
 
     if len(m.command) == 1:
         await m.reply_text(
-            f"Use this command to unban any user.\n\n"
-            f"Usage:\n\n`/unban_user user_id`\n\n"
-            f"Eg: `/unban_user 1234567`\n"
-            f"This will unban user with id `1234567`.",
+            "**Usage:** `/unban_user user_id`\n\n"
+            "**Example:** `/unban_user 1234567`",
             quote=True
         )
         return
 
     try:
         user_id = int(m.command[1])
-        unban_log_text = f"Unbanning user {user_id}"
+        unban_log_text = f"Unbanning user `{user_id}`"
+
         try:
-            await c.send_message(user_id, f"Your ban was lifted!")
-            unban_log_text += '\n\nUser notified successfully!'
-        except:
-            traceback.print_exc()
-            unban_log_text += f"\n\nUser notification failed! \n\n`{traceback.format_exc()}`"
+            await c.send_message(user_id, "Your ban has been lifted! ✅")
+            unban_log_text += '\n\n✅ User notified.'
+        except Exception:
+            unban_log_text += '\n\n⚠️ User notification failed.'
+
         await db.remove_ban(user_id)
-        print(unban_log_text)
         await m.reply_text(unban_log_text, quote=True)
-    except:
-        traceback.print_exc()
-        await m.reply_text(
-            f"Error occurred! Traceback given below\n\n`{traceback.format_exc()}`",
-            quote=True
-        )
+
+    except ValueError:
+        await m.reply_text("❌ Invalid user ID!", quote=True)
+    except Exception:
+        await m.reply_text(f"❌ Error:\n\n`{traceback.format_exc()}`", quote=True)
 
 
+# ==================== BANNED USERS LIST ====================
 @Bot.on_message(filters.private & filters.command("banned_users"))
 async def _banned_users(_, m: Message):
     if not await is_authorized(m.from_user.id):
@@ -393,19 +453,19 @@ async def _banned_users(_, m: Message):
         banned_on = banned_user['ban_status']['banned_on']
         ban_reason = banned_user['ban_status']['ban_reason']
         banned_usr_count += 1
-        text += f"> **user_id**: `{user_id}`, **Ban Duration**: `{ban_duration}`, " \
-                f"**Banned on**: `{banned_on}`, **Reason**: `{ban_reason}`\n\n"
-    reply_text = f"Total banned user(s): `{banned_usr_count}`\n\n{text}"
+        text += f"> `{user_id}` | Duration: `{ban_duration}d` | On: `{banned_on}` | Reason: `{ban_reason}`\n\n"
+
+    reply_text = f"**Total banned:** `{banned_usr_count}`\n\n{text}"
     if len(reply_text) > 4096:
         with open('banned-users.txt', 'w') as f:
             f.write(reply_text)
         await m.reply_document('banned-users.txt', True)
         os.remove('banned-users.txt')
         return
-    await m.reply_text(reply_text, True)
+    await m.reply_text(reply_text if text else "No banned users.", True)
 
 
-# ==================== CLONE BOT (Feature 11) ====================
+# ==================== CLONE BOT ====================
 @Bot.on_message(filters.private & filters.command("clone"))
 async def clone_cmd(bot: Client, m: Message):
     await clone_handler(bot, m)
@@ -416,7 +476,7 @@ async def removeclone_cmd(bot: Client, m: Message):
     await remove_clone_handler(bot, m)
 
 
-# ==================== LANGUAGE (Feature 12) ====================
+# ==================== LANGUAGE ====================
 @Bot.on_message(filters.private & filters.command("language"))
 async def language_cmd(bot: Client, m: Message):
     buttons = []
@@ -444,17 +504,19 @@ async def language_cmd(bot: Client, m: Message):
 @Bot.on_message(filters.private & filters.command("clear_batch"))
 async def clear_user_batch(bot: Client, m: Message):
     MediaList[f"{str(m.from_user.id)}"] = []
-    await m.reply_text("Cleared your batch files successfully!")
+    await m.reply_text("✅ Cleared your batch files successfully!")
 
 
-# ==================== SETTINGS COMMAND (Owner only) ====================
-@Bot.on_message(filters.private & filters.command("settings") & filters.user(Config.BOT_OWNER))
+# ==================== SETTINGS ====================
+@Bot.on_message(filters.private & filters.command("settings"))
 async def settings_cmd(bot: Client, m: Message):
-    settings_text = f"""
-⚙️ **Bot Settings:**
+    if int(m.from_user.id) != Config.BOT_OWNER:
+        return
+
+    settings_text = f"""⚙️ **Bot Settings:**
 
 🔹 **Auto-Delete:** `{Config.AUTO_DELETE_TIME}s` {'✅' if Config.AUTO_DELETE_TIME > 0 else '❌'}
-🔹 **Custom Caption:** {'✅' if Config.CUSTOM_CAPTION else '❌'}
+🔹 **Custom Caption:** {'✅ Set' if Config.CUSTOM_CAPTION else '❌ Not set'}
 🔹 **Start Photo:** {'✅' if Config.START_PIC else '❌'}
 🔹 **Channel Button:** {'❌ Disabled' if Config.DISABLE_CHANNEL_BUTTON else '✅ Enabled'}
 🔹 **Force Sub Channels:** `{len(Config.get_force_sub_channels())}`
@@ -464,8 +526,9 @@ async def settings_cmd(bot: Client, m: Message):
 🔹 **Stream Server:** {'✅' if Config.STREAM_ENABLED else '❌'}
 🔹 **Clone Feature:** {'✅' if Config.CLONE_ENABLED else '❌'}
 🔹 **Default Language:** `{Config.DEFAULT_LANGUAGE}`
-🔹 **Total Admins:** `{len(Config.ADMINS)}`
-"""
+🔹 **Worker URL:** `{Config.WORKER_URL or 'Not set (using t.me)'}`
+🔹 **Total Admins:** `{len(Config.ADMINS)}`"""
+
     await m.reply_text(settings_text, quote=True)
 
 
@@ -475,17 +538,19 @@ async def button(bot: Client, cmd: CallbackQuery):
 
     cb_data = cmd.data
 
-    # Language selection (Feature 12)
+    # Language selection
     if cb_data.startswith("setlang_"):
         lang_code = cb_data.split("_", 1)[1]
         await db.set_language(cmd.from_user.id, lang_code)
         lang_name = get_lang_name(lang_code)
-        await cmd.message.edit(
-            get_text(lang_code, "language_changed").format(lang=lang_name)
-        )
+        try:
+            await cmd.message.edit(
+                get_text(lang_code, "language_changed").format(lang=lang_name)
+            )
+        except Exception:
+            await cmd.answer(f"Language changed to {lang_name}!", show_alert=True)
         return
 
-    # Choose language button
     if cb_data == "choose_lang":
         buttons = []
         row = []
@@ -502,45 +567,72 @@ async def button(bot: Client, cmd: CallbackQuery):
         buttons.append([InlineKeyboardButton("🔙 Back", callback_data="gotohome")])
 
         lang = await db.get_language(cmd.from_user.id)
-        await cmd.message.edit(
-            get_text(lang, "choose_lang"),
-            reply_markup=InlineKeyboardMarkup(buttons)
-        )
+        try:
+            await cmd.message.edit(
+                get_text(lang, "choose_lang"),
+                reply_markup=InlineKeyboardMarkup(buttons)
+            )
+        except Exception:
+            await cmd.message.edit_caption(
+                caption=get_text(lang, "choose_lang"),
+                reply_markup=InlineKeyboardMarkup(buttons)
+            )
         return
 
     if "aboutbot" in cb_data:
         lang = await db.get_language(cmd.from_user.id)
-        await cmd.message.edit(
-            Config.ABOUT_BOT_TEXT,
-            disable_web_page_preview=True,
-            reply_markup=InlineKeyboardMarkup([
-                [
-                    InlineKeyboardButton(get_text(lang, "go_home"), callback_data="gotohome"),
-                    InlineKeyboardButton(get_text(lang, "about_dev_btn"), callback_data="aboutdevs")
-                ]
-            ])
-        )
+        try:
+            await cmd.message.edit(
+                Config.ABOUT_BOT_TEXT,
+                disable_web_page_preview=True,
+                reply_markup=InlineKeyboardMarkup([
+                    [
+                        InlineKeyboardButton(get_text(lang, "go_home"), callback_data="gotohome"),
+                        InlineKeyboardButton(get_text(lang, "about_dev_btn"), callback_data="aboutdevs")
+                    ]
+                ])
+            )
+        except Exception:
+            await cmd.message.edit_caption(
+                caption=Config.ABOUT_BOT_TEXT,
+                reply_markup=InlineKeyboardMarkup([
+                    [
+                        InlineKeyboardButton(get_text(lang, "go_home"), callback_data="gotohome"),
+                        InlineKeyboardButton(get_text(lang, "about_dev_btn"), callback_data="aboutdevs")
+                    ]
+                ])
+            )
 
     elif "aboutdevs" in cb_data:
         lang = await db.get_language(cmd.from_user.id)
-        await cmd.message.edit(
-            Config.ABOUT_DEV_TEXT,
-            disable_web_page_preview=True,
-            reply_markup=InlineKeyboardMarkup([
-                [
-                    InlineKeyboardButton(get_text(lang, "go_home"), callback_data="gotohome"),
-                    InlineKeyboardButton(get_text(lang, "about_bot_btn"), callback_data="aboutbot")
-                ]
-            ])
-        )
+        try:
+            await cmd.message.edit(
+                Config.ABOUT_DEV_TEXT,
+                disable_web_page_preview=True,
+                reply_markup=InlineKeyboardMarkup([
+                    [
+                        InlineKeyboardButton(get_text(lang, "go_home"), callback_data="gotohome"),
+                        InlineKeyboardButton(get_text(lang, "about_bot_btn"), callback_data="aboutbot")
+                    ]
+                ])
+            )
+        except Exception:
+            await cmd.message.edit_caption(
+                caption=Config.ABOUT_DEV_TEXT,
+                reply_markup=InlineKeyboardMarkup([
+                    [
+                        InlineKeyboardButton(get_text(lang, "go_home"), callback_data="gotohome"),
+                        InlineKeyboardButton(get_text(lang, "about_bot_btn"), callback_data="aboutbot")
+                    ]
+                ])
+            )
 
     elif "gotohome" in cb_data:
         lang = await db.get_language(cmd.from_user.id)
         start_text = get_text(lang, "start_msg").format(
-            name=cmd.message.chat.first_name,
+            name=cmd.message.chat.first_name or "User",
             id=cmd.message.chat.id
         )
-
         buttons = [
             [
                 InlineKeyboardButton(get_text(lang, "our_channel"), url="https://t.me/Moviesss4ers"),
@@ -555,19 +647,20 @@ async def button(bot: Client, cmd: CallbackQuery):
                 InlineKeyboardButton("🌐 Language", callback_data="choose_lang")
             ]
         ]
-
-        # If originally sent as photo, can't switch to text edit
         try:
             await cmd.message.edit(
                 start_text,
                 disable_web_page_preview=True,
                 reply_markup=InlineKeyboardMarkup(buttons)
             )
-        except:
-            await cmd.message.edit_caption(
-                caption=start_text,
-                reply_markup=InlineKeyboardMarkup(buttons)
-            )
+        except Exception:
+            try:
+                await cmd.message.edit_caption(
+                    caption=start_text,
+                    reply_markup=InlineKeyboardMarkup(buttons)
+                )
+            except Exception:
+                pass
 
     elif "refreshForceSub" in cb_data:
         force_channels = Config.get_force_sub_channels()
@@ -575,16 +668,12 @@ async def button(bot: Client, cmd: CallbackQuery):
             await cmd.answer("No force sub channels configured!", show_alert=True)
             return
 
-        # Check all channels
         all_joined = True
         for channel_id in force_channels:
             try:
-                user = await bot.get_chat_member(channel_id, cmd.message.chat.id)
+                user = await bot.get_chat_member(int(channel_id), cmd.message.chat.id)
                 if user.status == "kicked":
-                    await cmd.message.edit(
-                        text="Sorry, You are Banned!",
-                        disable_web_page_preview=True
-                    )
+                    await cmd.message.edit(text="Sorry, You are Banned!")
                     return
             except UserNotParticipant:
                 all_joined = False
@@ -593,16 +682,12 @@ async def button(bot: Client, cmd: CallbackQuery):
                 continue
 
         if not all_joined:
-            lang = await db.get_language(cmd.from_user.id)
-            await cmd.answer(
-                "You haven't joined all channels yet! Please join first.",
-                show_alert=True
-            )
+            await cmd.answer("You haven't joined all channels yet!", show_alert=True)
             return
 
         lang = await db.get_language(cmd.from_user.id)
         start_text = get_text(lang, "start_msg").format(
-            name=cmd.message.chat.first_name,
+            name=cmd.message.chat.first_name or "User",
             id=cmd.message.chat.id
         )
         await cmd.message.edit(
@@ -626,7 +711,7 @@ async def button(bot: Client, cmd: CallbackQuery):
     elif cb_data.startswith("ban_user_"):
         user_id = cb_data.split("_", 2)[-1]
         if not await is_authorized(cmd.from_user.id):
-            await cmd.answer("You are not allowed to do that!", show_alert=True)
+            await cmd.answer("You are not allowed!", show_alert=True)
             return
         try:
             force_channels = Config.get_force_sub_channels()
@@ -634,13 +719,14 @@ async def button(bot: Client, cmd: CallbackQuery):
                 await bot.ban_chat_member(chat_id=int(force_channels[0]), user_id=int(user_id))
             await cmd.answer("User Banned!", show_alert=True)
         except Exception as e:
-            await cmd.answer(f"Can't Ban Him!\n\nError: {e}", show_alert=True)
+            await cmd.answer(f"Error: {e}", show_alert=True)
 
     elif "addToBatchTrue" in cb_data:
-        if MediaList.get(f"{str(cmd.from_user.id)}", None) is None:
+        if MediaList.get(f"{str(cmd.from_user.id)}") is None:
             MediaList[f"{str(cmd.from_user.id)}"] = []
-        file_id = cmd.message.reply_to_message.id
-        MediaList[f"{str(cmd.from_user.id)}"].append(file_id)
+        if cmd.message.reply_to_message:
+            file_id = cmd.message.reply_to_message.id
+            MediaList[f"{str(cmd.from_user.id)}"].append(file_id)
 
         lang = await db.get_language(cmd.from_user.id)
         await cmd.message.edit(
@@ -652,49 +738,71 @@ async def button(bot: Client, cmd: CallbackQuery):
         )
 
     elif "addToBatchFalse" in cb_data:
-        await save_media_in_channel(bot, editable=cmd.message, message=cmd.message.reply_to_message)
+        if cmd.message.reply_to_message:
+            await save_media_in_channel(bot, editable=cmd.message, message=cmd.message.reply_to_message)
 
     elif "getBatchLink" in cb_data:
-        message_ids = MediaList.get(f"{str(cmd.from_user.id)}", None)
-        if message_ids is None:
+        message_ids = MediaList.get(f"{str(cmd.from_user.id)}")
+        if not message_ids:
             await cmd.answer("Batch List Empty!", show_alert=True)
             return
-        await cmd.message.edit("Please wait, generating batch link ...")
+        await cmd.message.edit("⏳ Please wait, generating batch link ...")
         await save_batch_media_in_channel(bot=bot, editable=cmd.message, message_ids=message_ids)
         MediaList[f"{str(cmd.from_user.id)}"] = []
 
     elif "closeMessage" in cb_data:
-        await cmd.message.delete(True)
+        try:
+            await cmd.message.delete()
+        except Exception:
+            pass
 
     try:
         await cmd.answer()
     except QueryIdInvalid:
+        pass
+    except Exception:
         pass
 
 
 # ==================== STARTUP ====================
 async def main():
     """Main startup function."""
+    logger.info("Starting bot...")
     await Bot.start()
-    logging.info(f"Bot @{Config.BOT_USERNAME} started!")
+
+    me = await Bot.get_me()
+    logger.info(f"Bot @{me.username} started successfully!")
 
     # Feature 10: Start stream server
     if Config.STREAM_ENABLED:
-        from handlers.stream_handler import start_stream_server, set_bot_client
-        set_bot_client(Bot)
-        await start_stream_server()
-        logging.info(f"Stream server started at {Config.get_stream_base_url()}")
+        try:
+            from handlers.stream_handler import start_stream_server, set_bot_client
+            set_bot_client(Bot)
+            await start_stream_server()
+            logger.info(f"Stream server started at {Config.get_stream_base_url()}")
+        except Exception as e:
+            logger.error(f"Stream server failed to start: {e}")
 
     # Feature 11: Restart clone bots
     if Config.CLONE_ENABLED:
-        await restart_all_clones()
+        try:
+            await restart_all_clones()
+        except Exception as e:
+            logger.error(f"Clone restart error: {e}")
 
-    logging.info("All features initialized!")
+    logger.info("All features initialized! Bot is running.")
 
-    # Keep the bot running
+    # Keep running
     await asyncio.Event().wait()
 
 
 if __name__ == "__main__":
-    # Use asyncio.run for clean startup
-    Bot.run(main())
+    loop = asyncio.get_event_loop()
+    try:
+        loop.run_until_complete(main())
+    except KeyboardInterrupt:
+        logger.info("Bot stopped by user.")
+    except Exception as e:
+        logger.error(f"Fatal error: {e}")
+    finally:
+        loop.close()
