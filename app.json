@@ -36,6 +36,10 @@
             "description": "Force Sub Channel 2 ID (Optional)",
             "required": false
         },
+        "WORKER_URL": {
+            "description": "Cloudflare Worker URL for share links. Leave empty for direct t.me links. Example: https://files.yoursite.workers.dev",
+            "required": false
+        },
         "FORCE_SUB_CHANNEL_3": {
             "description": "Force Sub Channel 3 ID (Optional)",
             "required": false
