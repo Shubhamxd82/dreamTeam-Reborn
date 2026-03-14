@@ -1,4 +1,4 @@
-# (c) @harshil8981
+# (c) @harshil8981 — Enhanced V2
 
 from configs import Config
 from handlers.database import db
