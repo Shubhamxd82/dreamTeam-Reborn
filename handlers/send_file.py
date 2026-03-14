@@ -1,4 +1,4 @@
-# (c) @harshil8981 — Enhanced V2
+# (c) @Shubhlinks — Enhanced V2
 
 import asyncio
 import logging
@@ -15,10 +15,17 @@ logging.basicConfig(level=logging.INFO)
 
 def get_file_info(message: Message) -> tuple:
     """Extract file info from a message."""
-    media = message.document or message.video or message.audio
+    media = None
+    if message.document:
+        media = message.document
+    elif message.video:
+        media = message.video
+    elif message.audio:
+        media = message.audio
+
     if media:
-        filename = getattr(media, 'file_name', 'Unknown')
-        filesize = getattr(media, 'file_size', 0)
+        filename = getattr(media, 'file_name', None) or "Unknown"
+        filesize = getattr(media, 'file_size', 0) or 0
         return filename, filesize
     return "Unknown", 0
 
@@ -26,10 +33,10 @@ def get_file_info(message: Message) -> tuple:
 def format_custom_caption(message: Message, user_mention: str = "", username: str = "") -> str:
     """Format custom caption with variables."""
     if not Config.CUSTOM_CAPTION:
-        return message.caption or ""
+        return getattr(message, 'caption', '') or ""
 
     filename, filesize = get_file_info(message)
-    original_caption = message.caption or ""
+    original_caption = getattr(message, 'caption', '') or ""
 
     try:
         caption = Config.CUSTOM_CAPTION.format(
@@ -40,7 +47,7 @@ def format_custom_caption(message: Message, user_mention: str = "", username: st
             username=username
         )
         return caption
-    except Exception as e:
+    except (KeyError, IndexError, ValueError) as e:
         logging.error(f"Caption format error: {e}")
         return original_caption
 
@@ -54,16 +61,18 @@ async def reply_forward(message: Message, file_id: int, lang: str = "en"):
         else:
             warn_text = "📁 Here is your file!"
 
-        # Add stream/download buttons if enabled
         buttons = []
         if Config.STREAM_ENABLED and Config.STREAM_FQDN:
-            from handlers.stream_handler import get_stream_link, get_download_link
-            stream_link = get_stream_link(file_id)
-            dl_link = get_download_link(file_id)
-            buttons.append([
-                InlineKeyboardButton("▶️ Stream", url=stream_link),
-                InlineKeyboardButton("📥 Download", url=dl_link)
-            ])
+            try:
+                from handlers.stream_handler import get_stream_link, get_download_link
+                stream_link = get_stream_link(file_id)
+                dl_link = get_download_link(file_id)
+                buttons.append([
+                    InlineKeyboardButton("▶️ Stream", url=stream_link),
+                    InlineKeyboardButton("📥 Download", url=dl_link)
+                ])
+            except ImportError:
+                logging.warning("stream_handler not available")
 
         reply = await message.reply_text(
             warn_text,
@@ -73,7 +82,7 @@ async def reply_forward(message: Message, file_id: int, lang: str = "en"):
         )
         return reply
     except FloodWait as e:
-        logging.warning(f"FloodWait: {e}")
+        logging.warning(f"FloodWait in reply_forward: {e.value}s")
         await asyncio.sleep(e.value)
         return await reply_forward(message, file_id, lang)
     except Exception as e:
@@ -82,39 +91,62 @@ async def reply_forward(message: Message, file_id: int, lang: str = "en"):
 
 
 async def media_forward(bot: Client, user_id: int, file_id: int):
-    """Forward media to user with custom caption and protect content support."""
+    """Forward media to user with custom caption and protect content."""
     try:
-        # Get original message for custom caption
-        original_msg = await bot.get_messages(
-            chat_id=Config.DB_CHANNEL,
-            message_ids=file_id
-        )
+        if Config.CUSTOM_CAPTION:
+            original_msg = await bot.get_messages(
+                chat_id=Config.DB_CHANNEL,
+                message_ids=file_id
+            )
+            if original_msg and original_msg.media:
+                custom_cap = format_custom_caption(original_msg)
+                try:
+                    return await bot.copy_message(
+                        chat_id=user_id,
+                        from_chat_id=Config.DB_CHANNEL,
+                        message_id=file_id,
+                        caption=custom_cap,
+                        protect_content=Config.PROTECT_CONTENT
+                    )
+                except TypeError:
+                    # Older Pyrogram version doesn't support protect_content
+                    return await bot.copy_message(
+                        chat_id=user_id,
+                        from_chat_id=Config.DB_CHANNEL,
+                        message_id=file_id,
+                        caption=custom_cap
+                    )
 
-        if Config.CUSTOM_CAPTION and original_msg.media:
-            custom_cap = format_custom_caption(original_msg)
-            return await bot.copy_message(
-                chat_id=user_id,
-                from_chat_id=Config.DB_CHANNEL,
-                message_id=file_id,
-                caption=custom_cap,
-                protect_content=Config.PROTECT_CONTENT  # Feature 8
-            )
-        elif Config.FORWARD_AS_COPY:
-            return await bot.copy_message(
-                chat_id=user_id,
-                from_chat_id=Config.DB_CHANNEL,
-                message_id=file_id,
-                protect_content=Config.PROTECT_CONTENT  # Feature 8
-            )
+        if Config.FORWARD_AS_COPY:
+            try:
+                return await bot.copy_message(
+                    chat_id=user_id,
+                    from_chat_id=Config.DB_CHANNEL,
+                    message_id=file_id,
+                    protect_content=Config.PROTECT_CONTENT
+                )
+            except TypeError:
+                return await bot.copy_message(
+                    chat_id=user_id,
+                    from_chat_id=Config.DB_CHANNEL,
+                    message_id=file_id
+                )
         else:
-            return await bot.forward_messages(
-                chat_id=user_id,
-                from_chat_id=Config.DB_CHANNEL,
-                message_ids=file_id,
-                protect_content=Config.PROTECT_CONTENT  # Feature 8
-            )
+            try:
+                return await bot.forward_messages(
+                    chat_id=user_id,
+                    from_chat_id=Config.DB_CHANNEL,
+                    message_ids=file_id,
+                    protect_content=Config.PROTECT_CONTENT
+                )
+            except TypeError:
+                return await bot.forward_messages(
+                    chat_id=user_id,
+                    from_chat_id=Config.DB_CHANNEL,
+                    message_ids=file_id
+                )
     except FloodWait as e:
-        logging.warning(f"FloodWait: {e}")
+        logging.warning(f"FloodWait in media_forward: {e.value}s")
         await asyncio.sleep(e.value)
         return await media_forward(bot, user_id, file_id)
     except Exception as e:
@@ -126,15 +158,13 @@ async def send_media_and_reply(bot: Client, user_id: int, file_id: int):
     """Send file to user with auto-delete, custom caption, stream links."""
     try:
         lang = await db.get_language(user_id)
-
         sent_message = await media_forward(bot, user_id, file_id)
         if sent_message is None:
             return
 
         reply_message = await reply_forward(sent_message, file_id, lang)
 
-        # Feature 1: Auto-Delete
-        if Config.AUTO_DELETE_TIME > 0:
+        if Config.AUTO_DELETE_TIME > 0 and reply_message:
             asyncio.create_task(
                 delete_after_delay(
                     reply_message,
@@ -152,18 +182,20 @@ async def delete_after_delay(message, file_message, delay: int, lang: str = "en"
     try:
         await asyncio.sleep(delay)
 
-        # Delete the file message
         try:
             await file_message.delete()
-        except Exception:
-            pass
+        except Exception as e:
+            logging.warning(f"Could not delete file message: {e}")
 
-        # Edit the warning message
         if message:
             try:
                 delete_text = get_text(lang, "file_deleted")
                 await message.edit_text(delete_text)
-            except (MessageDeleteForbidden, Exception) as e:
+            except MessageDeleteForbidden:
+                logging.warning("Message edit forbidden after delete")
+            except Exception as e:
                 logging.warning(f"Could not edit delete message: {e}")
+    except asyncio.CancelledError:
+        pass
     except Exception as e:
         logging.error(f"Delete after delay error: {e}")
