@@ -350,4 +350,18 @@ LANGUAGES = {
 
 def get_text(lang_code: str, key: str) -> str:
     """Get translated text for a given language and key. Falls back to English."""
-    lang 
+    lang = LANGUAGES.get(lang_code, LANGUAGES["en"])
+    return lang.get(key, LANGUAGES["en"].get(key, key))
+
+
+def get_all_lang_codes() -> list:
+    """Get all supported language codes."""
+    return list(LANGUAGES.keys())
+
+
+def get_lang_name(lang_code: str) -> str:
+    """Get the display name for a language code."""
+    return LANGUAGES.get(lang_code, LANGUAGES["en"]).get("lang_name", lang_code)
+
+
+
