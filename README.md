@@ -389,3 +389,69 @@ async function handleRequest(request) {
   
   return new Response('File Store Bot', { status: 200 })
 }
+HPSuperFile_StoreBot/
+├── .github/
+│   └── workflows/
+│       └── codeql-analysis.yml     # Security scanning
+├── handlers/
+│   ├── add_user_to_db.py           # User registration
+│   ├── admin_handler.py            # 🆕 Multi-admin panel
+│   ├── broadcast_handlers.py       # Broadcasting system
+│   ├── check_user_status.py        # Ban status checker
+│   ├── clone_handler.py            # 🆕 Clone bot system
+│   ├── database.py                 # MongoDB operations
+│   ├── force_sub_handler.py        # Multi force subscribe
+│   ├── helpers.py                  # Utilities & URL shortener
+│   ├── languages.py                # 🆕 Multi-language (i18n)
+│   ├── save_media.py               # File saving logic
+│   ├── send_file.py                # File sending with features
+│   ├── stream_handler.py           # 🆕 Stream/Download server
+│   └── token_handler.py            # 🆕 Token verification
+├── app.json                        # Heroku/Deploy config
+├── app.py                          # Flask keep-alive server
+├── bot.py                          # Main bot file
+├── configs.py                      # All configuration
+├── Dockerfile                      # Docker deployment
+├── heroku.yml                      # Heroku Docker config
+├── Procfile                        # Heroku process file
+├── requirements.txt                # Python dependencies
+└── README.md                       # This file
+# 1. Clone the repository
+git clone https://github.com/dengerous53/HPSuperFile_StoreBot.git
+cd HPSuperFile_StoreBot
+
+# 2. Create .env file or set environment variables
+export API_ID=12345678
+export API_HASH=your_api_hash
+export BOT_TOKEN=your_bot_token
+export BOT_USERNAME=YourBotUsername
+export DB_CHANNEL=-1001234567890
+export BOT_OWNER=your_user_id
+export DATABASE_URL=mongodb+srv://user:pass@cluster.mongodb.net
+export LOG_CHANNEL=-1001234567890
+
+# 3. Install dependencies
+pip3 install -r requirements.txt
+
+# 4. Run the bot
+python3 bot.py
+# 1. Clone the repository
+git clone https://github.com/dengerous53/HPSuperFile_StoreBot.git
+cd HPSuperFile_StoreBot
+
+# 2. Build Docker image
+docker build -t filestore-bot .
+
+# 3. Run container (set your env variables)
+docker run -d \
+  --name filestore-bot \
+  -e API_ID=12345678 \
+  -e API_HASH=your_api_hash \
+  -e BOT_TOKEN=your_bot_token \
+  -e BOT_USERNAME=YourBotUsername \
+  -e DB_CHANNEL=-1001234567890 \
+  -e BOT_OWNER=your_user_id \
+  -e DATABASE_URL=mongodb+srv://user:pass@cluster.mongodb.net \
+  -e LOG_CHANNEL=-1001234567890 \
+  -p 8080:8080 \
+  filestore-bot
