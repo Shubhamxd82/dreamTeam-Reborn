@@ -183,3 +183,209 @@ Users can switch their preferred language using `/language` command or the 🌐 
 - Any service with similar API pattern
 
 **Example:**
+</details>
+
+<details>
+<summary><b>🔐 Feature 7: Token/Verify System</b></summary>
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `TOKEN_VERIFICATION` | Enable token verification (`True`/`False`) | `False` |
+| `TOKEN_TIMEOUT` | Token validity duration in seconds | `7200` (2 hours) |
+| `TOKEN_SHORTENER_API` | API key for token shortener (can differ from main shortener) | Empty |
+| `TOKEN_SHORTENER_WEBSITE` | Shortener domain for tokens | Empty |
+
+**How it works:**
+1. User clicks a file link
+2. Bot asks user to verify via a shortened link
+3. User clicks the short link → completes verification
+4. Token is valid for `TOKEN_TIMEOUT` seconds
+5. During valid period, user can access files without re-verifying
+
+> 💰 This feature is commonly used for **monetization** via URL shorteners.
+
+</details>
+
+<details>
+<summary><b>🔒 Feature 8: Protect Content</b></summary>
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `PROTECT_CONTENT` | If `True`, users cannot forward/save files sent by the bot. | `False` |
+
+> ⚠️ This uses Telegram's native content protection. Users still can't screenshot on mobile.
+
+</details>
+
+<details>
+<summary><b>👮 Feature 9: Multi-Admin Panel</b></summary>
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `ADMINS` | Space-separated list of admin user IDs | Empty |
+
+**Admin Capabilities:**
+- `/broadcast` — Send messages to all users
+- `/status` — View user statistics
+- `/ban_user` — Ban users
+- `/unban_user` — Unban users
+- `/banned_users` — View banned users list
+- `/admins` — View admin list
+
+**Owner-Only:**
+- `/addadmin user_id` — Add new admin
+- `/removeadmin user_id` — Remove admin
+- `/settings` — View all bot settings
+
+**Example:**
+</details>
+
+<details>
+<summary><b>🔐 Feature 7: Token/Verify System</b></summary>
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `TOKEN_VERIFICATION` | Enable token verification (`True`/`False`) | `False` |
+| `TOKEN_TIMEOUT` | Token validity duration in seconds | `7200` (2 hours) |
+| `TOKEN_SHORTENER_API` | API key for token shortener (can differ from main shortener) | Empty |
+| `TOKEN_SHORTENER_WEBSITE` | Shortener domain for tokens | Empty |
+
+**How it works:**
+1. User clicks a file link
+2. Bot asks user to verify via a shortened link
+3. User clicks the short link → completes verification
+4. Token is valid for `TOKEN_TIMEOUT` seconds
+5. During valid period, user can access files without re-verifying
+
+> 💰 This feature is commonly used for **monetization** via URL shorteners.
+
+</details>
+
+<details>
+<summary><b>🔒 Feature 8: Protect Content</b></summary>
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `PROTECT_CONTENT` | If `True`, users cannot forward/save files sent by the bot. | `False` |
+
+> ⚠️ This uses Telegram's native content protection. Users still can't screenshot on mobile.
+
+</details>
+
+<details>
+<summary><b>👮 Feature 9: Multi-Admin Panel</b></summary>
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `ADMINS` | Space-separated list of admin user IDs | Empty |
+
+**Admin Capabilities:**
+- `/broadcast` — Send messages to all users
+- `/status` — View user statistics
+- `/ban_user` — Ban users
+- `/unban_user` — Unban users
+- `/banned_users` — View banned users list
+- `/admins` — View admin list
+
+**Owner-Only:**
+- `/addadmin user_id` — Add new admin
+- `/removeadmin user_id` — Remove admin
+- `/settings` — View all bot settings
+
+**Example:**
+Admins can also be added dynamically via `/addadmin` command.
+
+</details>
+
+<details>
+<summary><b>▶️ Feature 10: Stream/Download Links</b></summary>
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `STREAM_ENABLED` | Enable stream server (`True`/`False`) | `False` |
+| `STREAM_PORT` | Port for the stream server | `8080` |
+| `STREAM_FQDN` | Your public domain | Empty |
+| `STREAM_USE_HTTPS` | Use HTTPS for stream links | `True` |
+
+**How it works:**
+- Bot starts an `aiohttp` web server alongside the Telegram bot
+- For each file, two links are generated:
+  - **▶️ Stream** — Opens file in browser (great for videos)
+  - **📥 Download** — Force-downloads the file
+
+**Example:**
+**Generated Links:**
+> ⚠️ Requires a hosting platform that supports port binding (VPS, Koyeb, Railway, etc.)
+
+</details>
+
+<details>
+<summary><b>🤖 Feature 11: Clone Bot</b></summary>
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `CLONE_ENABLED` | Enable clone feature (`True`/`False`) | `False` |
+
+**How it works:**
+1. User creates a bot via [@BotFather](https://t.me/BotFather)
+2. User creates a private channel and adds the new bot as admin
+3. User runs: `/clone BOT_TOKEN DB_CHANNEL_ID`
+4. A clone of your bot starts running!
+5. Clone bots automatically restart when main bot restarts
+
+**Commands:**
+- `/clone BOT_TOKEN -100CHANNEL_ID` — Create clone
+- `/removeclone` — Remove your clone
+
+> ⚠️ Clone bots use the same `API_ID` and `API_HASH` as the main bot.
+
+</details>
+
+<details>
+<summary><b>🌐 Feature 12: Multi-Language</b></summary>
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `DEFAULT_LANGUAGE` | Default language for new users | `en` |
+
+**How it works:**
+- New users get the default language
+- Users can change language via `/language` command or 🌐 button
+- Language preference is saved per-user in the database
+- All bot messages, buttons, and prompts are translated
+
+</details>
+
+<details>
+<summary><b>☁️ Cloudflare Worker URL</b></summary>
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `WORKER_URL` | Cloudflare Worker URL for share links | `https://files.Moviesss4ers.workers.dev` |
+
+**Why use a Worker URL?**
+- 🔄 **Bot Migration:** If your bot gets banned, update the worker to redirect to new bot — all old links work!
+- 🛡️ **Anti-DMCA:** Adds a protection layer
+- 📊 **Analytics:** Track link clicks
+
+**Worker Setup:**
+1. Go to [Cloudflare Workers](https://workers.cloudflare.com)
+2. Create a new worker with this code:
+
+```javascript
+addEventListener('fetch', event => {
+  event.respondWith(handleRequest(event.request))
+})
+
+async function handleRequest(request) {
+  const url = new URL(request.url)
+  const path = url.pathname.substring(1) // Remove leading /
+  
+  if (path) {
+    // Redirect to your bot
+    const botUsername = 'YOUR_BOT_USERNAME' // Change this
+    return Response.redirect(`https://t.me/${botUsername}?start=${path}`, 302)
+  }
+  
+  return new Response('File Store Bot', { status: 200 })
+}
