@@ -73,6 +73,10 @@ class Config(object):
     # Supported: gplinks.co, shrinkme.io, shorturllink.in, etc.
     # Example: URL_SHORTENER_WEBSITE=gplinks.co  URL_SHORTENER_API=your_api_key
 
+    # Cloudflare Worker URL for share links (leave empty for direct t.me links)
+    # Example: https://files.Moviesss4ers.workers.dev
+    WORKER_URL = os.environ.get("WORKER_URL", "https://files.Moviesss4ers.workers.dev")
+
     # ==================== FEATURE 7: TOKEN/VERIFY SYSTEM ====================
     TOKEN_VERIFICATION = os.environ.get("TOKEN_VERIFICATION", "False").lower() == "true"
     TOKEN_TIMEOUT = int(os.environ.get("TOKEN_TIMEOUT", "7200"))  # Token validity in seconds (default 2hr)
