@@ -372,7 +372,6 @@ Admins can also be added dynamically via `/addadmin` command.
 1. Go to [Cloudflare Workers](https://workers.cloudflare.com)
 2. Create a new worker with this code:
 
-```javascript
 addEventListener('fetch', event => {
   event.respondWith(handleRequest(event.request))
 })
