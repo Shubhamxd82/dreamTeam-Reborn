@@ -408,3 +408,44 @@ Connect GitHub repo
 Set environment variables
 Build Command: pip install -r requirements.txt
 Start Command: python3 bot.py
+
+<h1 align="center">📦 Deployment Guide — HPSuperFile StoreBot V2</h1>
+
+<p align="center">
+  <b>Step-by-step deployment instructions for every platform</b>
+</p>
+
+<p align="center">
+  <a href="#-local-deployment-vps">Local/VPS</a> •
+  <a href="#-heroku">Heroku</a> •
+  <a href="#-koyeb">Koyeb</a> •
+  <a href="#-railway">Railway</a> •
+  <a href="#-render">Render</a> •
+  <a href="#-docker">Docker</a> •
+  <a href="#%EF%B8%8F-oracle-cloud-free-vps">Oracle Cloud</a> •
+  <a href="#-replit">Replit</a>
+</p>
+
+---
+
+## 📋 Pre-Deployment Checklist
+
+Before deploying on **ANY platform**, make sure you have these ready:
+
+### 1️⃣ Telegram API Credentials
+
+| What | Where to Get |
+|------|--------------|
+| `API_ID` | [my.telegram.org](https://my.telegram.org) → API Development Tools |
+| `API_HASH` | [my.telegram.org](https://my.telegram.org) → API Development Tools |
+| `BOT_TOKEN` | [@BotFather](https://t.me/BotFather) → `/newbot` |
+| `BOT_USERNAME` | The username you set in BotFather (without `@`) |
+
+### 2️⃣ MongoDB Database
+
+1. Go to [MongoDB Atlas](https://www.mongodb.com/atlas) (Free tier)
+2. Create a new cluster → Choose **FREE Shared Cluster**
+3. Create a database user with username & password
+4. Go to **Network Access** → Click **Add IP Address** → **Allow Access from Anywhere** (`0.0.0.0/0`)
+5. Go to **Database** → Click **Connect** → Choose **Connect your application**
+6. Copy the URI — it looks like:
