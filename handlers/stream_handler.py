@@ -1,10 +1,9 @@
 # Stream/Download Link Handler — Feature 10
 
 import logging
-import mimetypes
+import math
 from aiohttp import web
 from pyrogram import Client
-from pyrogram.types import Message
 from configs import Config
 from handlers.helpers import str_to_b64, b64_to_str, humanbytes
 
@@ -29,70 +28,97 @@ async def root_handler(request):
     })
 
 
-@routes.get("/watch/{encoded_id}")
-async def stream_handler(request):
-    """Stream a file directly in browser."""
+async def get_media_message(file_id: int):
+    """Get message from DB channel."""
     try:
-        encoded_id = request.match_info["encoded_id"]
-        try:
-            file_id = int(b64_to_str(encoded_id))
-        except:
-            file_id = int(encoded_id)
-
         message = await bot_client.get_messages(
             chat_id=Config.DB_CHANNEL,
             message_ids=file_id
         )
+        if message and message.media:
+            return message
+        return None
+    except Exception as e:
+        logging.error(f"Get media message error: {e}")
+        return None
 
-        if not message or not message.media:
+
+def get_media_info(message):
+    """Extract media info from message."""
+    media = message.document or message.video or message.audio
+    if not media:
+        return None, None, None, None
+
+    file_name = getattr(media, 'file_name', None) or 'file'
+    file_size = getattr(media, 'file_size', 0) or 0
+    mime_type = getattr(media, 'mime_type', None) or 'application/octet-stream'
+    file_id = media.file_id
+
+    return file_name, file_size, mime_type, file_id
+
+
+@routes.get("/watch/{encoded_id}")
+async def stream_handler(request):
+    """Stream a file directly in browser (inline)."""
+    try:
+        encoded_id = request.match_info["encoded_id"]
+        try:
+            msg_id = int(b64_to_str(encoded_id))
+        except Exception:
+            msg_id = int(encoded_id)
+
+        message = await get_media_message(msg_id)
+        if not message:
             return web.Response(text="File not found", status=404)
 
-        # Get file info
-        media = message.document or message.video or message.audio
-        if not media:
+        file_name, file_size, mime_type, _ = get_media_info(message)
+        if file_name is None:
             return web.Response(text="Not a downloadable file", status=400)
 
-        file_name = getattr(media, 'file_name', 'file')
-        file_size = getattr(media, 'file_size', 0)
-        mime_type = getattr(media, 'mime_type', 'application/octet-stream')
+        # Download the full file and serve it
+        # For large files, this uses memory — for production, use proper streaming
+        file_path = await bot_client.download_media(message, in_memory=True)
 
-        # Handle range requests for video streaming
-        range_header = request.headers.get('Range')
-        offset = 0
-        limit = file_size
+        if file_path is None:
+            return web.Response(text="Failed to download file", status=500)
 
-        if range_header:
-            range_spec = range_header.replace('bytes=', '')
-            parts = range_spec.split('-')
-            offset = int(parts[0]) if parts[0] else 0
-            limit = int(parts[1]) + 1 if parts[1] else file_size
+        file_bytes = bytes(file_path.getbuffer())
 
-        # Create streaming response
         headers = {
             'Content-Type': mime_type,
             'Content-Disposition': f'inline; filename="{file_name}"',
+            'Content-Length': str(len(file_bytes)),
             'Accept-Ranges': 'bytes',
-            'Content-Length': str(limit - offset),
         }
 
+        # Handle range requests for video seeking
+        range_header = request.headers.get('Range')
         if range_header:
-            headers['Content-Range'] = f'bytes {offset}-{limit - 1}/{file_size}'
-            response = web.StreamResponse(
+            range_spec = range_header.replace('bytes=', '')
+            parts = range_spec.split('-')
+            start = int(parts[0]) if parts[0] else 0
+            end = int(parts[1]) if len(parts) > 1 and parts[1] else len(file_bytes) - 1
+
+            if start >= len(file_bytes):
+                return web.Response(status=416)
+
+            end = min(end, len(file_bytes) - 1)
+            chunk = file_bytes[start:end + 1]
+
+            headers['Content-Range'] = f'bytes {start}-{end}/{len(file_bytes)}'
+            headers['Content-Length'] = str(len(chunk))
+
+            return web.Response(
+                body=chunk,
                 status=206,
                 headers=headers
             )
-        else:
-            response = web.StreamResponse(
-                status=200,
-                headers=headers
-            )
 
-        await response.prepare(request)
-
-        async for chunk in bot_client.stream_media(message, offset=offset // (1024 * 1024), limit=(limit - offset) // (1024 * 1024) + 1):
-            await response.write(chunk)
-
-        return response
+        return web.Response(
+            body=file_bytes,
+            status=200,
+            headers=headers
+        )
 
     except Exception as e:
         logging.error(f"Stream error: {e}")
@@ -105,36 +131,36 @@ async def download_handler(request):
     try:
         encoded_id = request.match_info["encoded_id"]
         try:
-            file_id = int(b64_to_str(encoded_id))
-        except:
-            file_id = int(encoded_id)
+            msg_id = int(b64_to_str(encoded_id))
+        except Exception:
+            msg_id = int(encoded_id)
 
-        message = await bot_client.get_messages(
-            chat_id=Config.DB_CHANNEL,
-            message_ids=file_id
-        )
-
-        if not message or not message.media:
+        message = await get_media_message(msg_id)
+        if not message:
             return web.Response(text="File not found", status=404)
 
-        media = message.document or message.video or message.audio
-        file_name = getattr(media, 'file_name', 'file')
-        file_size = getattr(media, 'file_size', 0)
-        mime_type = getattr(media, 'mime_type', 'application/octet-stream')
+        file_name, file_size, mime_type, _ = get_media_info(message)
+        if file_name is None:
+            return web.Response(text="Not a downloadable file", status=400)
+
+        file_path = await bot_client.download_media(message, in_memory=True)
+
+        if file_path is None:
+            return web.Response(text="Failed to download file", status=500)
+
+        file_bytes = bytes(file_path.getbuffer())
 
         headers = {
             'Content-Type': mime_type,
             'Content-Disposition': f'attachment; filename="{file_name}"',
-            'Content-Length': str(file_size),
+            'Content-Length': str(len(file_bytes)),
         }
 
-        response = web.StreamResponse(status=200, headers=headers)
-        await response.prepare(request)
-
-        async for chunk in bot_client.stream_media(message):
-            await response.write(chunk)
-
-        return response
+        return web.Response(
+            body=file_bytes,
+            status=200,
+            headers=headers
+        )
 
     except Exception as e:
         logging.error(f"Download error: {e}")
@@ -160,7 +186,7 @@ async def start_stream_server():
     if not Config.STREAM_ENABLED:
         return
 
-    app = web.Application()
+    app = web.Application(client_max_size=50 * 1024 * 1024)  # 50MB max
     app.add_routes(routes)
     runner = web.AppRunner(app)
     await runner.setup()
