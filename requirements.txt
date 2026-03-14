@@ -1,4 +1,4 @@
-Pyrogram
+pyrogram
 TgCrypto
 motor
 aiofiles
