@@ -129,3 +129,57 @@ Users can switch their preferred language using `/language` command or the 🌐 
 | `{username}` | User's username |
 
 **Example:**
+</details>
+
+<details>
+<summary><b>🖼️ Feature 3: Custom Start Photo</b></summary>
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `START_PIC` | Direct URL to an image displayed with the start message. | Empty (no photo) |
+
+**Example:**
+</details>
+
+<details>
+<summary><b>🔇 Feature 4: Disable Channel Button</b></summary>
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `DISABLE_CHANNEL_BUTTON` | If `True`, files posted in channels won't get a share button added. | `False` |
+
+</details>
+
+<details>
+<summary><b>📢 Feature 5: Multiple Force Subscribe</b></summary>
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `UPDATES_CHANNEL` | Force Sub Channel 1 ID | Empty |
+| `FORCE_SUB_CHANNEL_2` | Force Sub Channel 2 ID | Empty |
+| `FORCE_SUB_CHANNEL_3` | Force Sub Channel 3 ID | Empty |
+| `FORCE_SUB_CHANNEL_4` | Force Sub Channel 4 ID | Empty |
+
+**How it works:** Users must join ALL configured channels before they can use the bot. A join button is shown for each unjoin channel.
+
+> ⚠️ Bot must be admin in all force sub channels.
+
+</details>
+
+<details>
+<summary><b>🔗 Feature 6: URL Shortener</b></summary>
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `URL_SHORTENER` | Enable URL shortening (`True`/`False`) | `False` |
+| `URL_SHORTENER_API` | API key from your shortener service | Empty |
+| `URL_SHORTENER_WEBSITE` | Shortener domain | Empty |
+
+**Supported Shorteners:**
+- `gplinks.co`
+- `shrinkme.io`
+- `shorturllink.in`
+- `droplink.co`
+- Any service with similar API pattern
+
+**Example:**
