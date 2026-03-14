@@ -1,44 +1,120 @@
 {
-    "name": "File Store Bot",
-    "description": "A Telegram Files Store Bot to protect your Files in Pyrogram by @harshil8981",
-    "keywords": [
-        "telegram",
-        "files",
-        "store",
-        "bot"
-    ],
-    "repository": "https://github.com/harshil8981/HPSuperFile_StoreBot",
-    "website": "https://telegram.dog/Mrkiller_1109",
-    "success_url": "https://t.me/HP_Bot_discuss_group",
-    "logo": "https://telegra.ph/file/cadf1a4567c9ec2b7cb5e.jpg",
+    "name": "File Store Bot V2",
+    "description": "Enhanced Telegram File Store Bot with 12+ features",
+    "keywords": ["telegram", "files", "store", "bot", "stream"],
+    "repository": "https://github.com/dengerous53/HPSuperFile_StoreBot",
     "env": {
         "API_ID": {
-            "description": "Get this value from my.telegram.org or @TeleORG_Bot"
+            "description": "Get this from my.telegram.org"
         },
         "API_HASH": {
-            "description": "Get this value from my.telegram.org or @TeleORG_Bot"
+            "description": "Get this from my.telegram.org"
         },
         "BOT_TOKEN": {
-            "description": "Get this from @BotFather XD"
+            "description": "Get this from @BotFather"
         },
         "BOT_USERNAME": {
-            "description": "Your Bot Username which you sent to @BotFather (Without [@])"
+            "description": "Your Bot Username (Without @)"
         },
         "DB_CHANNEL": {
-            "description": "The Channel ID which will be used as Database. Example: -100123456789"
+            "description": "Channel ID for storing files. Example: -100123456789"
         },
         "BOT_OWNER": {
             "description": "Bot Owner UserID"
         },
         "DATABASE_URL": {
-            "description": "MongoDB Database URI for Saving UserID for Broadcast."
-        },
-        "UPDATES_CHANNEL": {
-            "description": "ID of a Channel which you want to do Force Sub to use the bot. Example: -100123456789",
-            "required": false
+            "description": "MongoDB Database URI"
         },
         "LOG_CHANNEL": {
-            "description": "Logs Channel ID for some Tracking XD. Example: -100123456789"
+            "description": "Logs Channel ID. Example: -100123456789"
+        },
+        "UPDATES_CHANNEL": {
+            "description": "Force Sub Channel 1 ID (Optional)",
+            "required": false
+        },
+        "FORCE_SUB_CHANNEL_2": {
+            "description": "Force Sub Channel 2 ID (Optional)",
+            "required": false
+        },
+        "FORCE_SUB_CHANNEL_3": {
+            "description": "Force Sub Channel 3 ID (Optional)",
+            "required": false
+        },
+        "FORCE_SUB_CHANNEL_4": {
+            "description": "Force Sub Channel 4 ID (Optional)",
+            "required": false
+        },
+        "AUTO_DELETE_TIME": {
+            "description": "Auto-delete files after X seconds (0 to disable). Default: 600",
+            "required": false
+        },
+        "CUSTOM_CAPTION": {
+            "description": "Custom caption. Variables: {filename} {filesize} {caption} {mention} {username}",
+            "required": false
+        },
+        "START_PIC": {
+            "description": "URL of start message photo/image",
+            "required": false
+        },
+        "DISABLE_CHANNEL_BUTTON": {
+            "description": "Disable share button on channel files (True/False)",
+            "required": false
+        },
+        "URL_SHORTENER": {
+            "description": "Enable URL shortener (True/False)",
+            "required": false
+        },
+        "URL_SHORTENER_API": {
+            "description": "URL shortener API key",
+            "required": false
+        },
+        "URL_SHORTENER_WEBSITE": {
+            "description": "URL shortener website (e.g., gplinks.co)",
+            "required": false
+        },
+        "TOKEN_VERIFICATION": {
+            "description": "Enable token verification (True/False)",
+            "required": false
+        },
+        "TOKEN_TIMEOUT": {
+            "description": "Token validity in seconds. Default: 7200",
+            "required": false
+        },
+        "TOKEN_SHORTENER_API": {
+            "description": "Token shortener API key (can be same as URL_SHORTENER_API)",
+            "required": false
+        },
+        "TOKEN_SHORTENER_WEBSITE": {
+            "description": "Token shortener website",
+            "required": false
+        },
+        "PROTECT_CONTENT": {
+            "description": "Prevent forwarding files (True/False)",
+            "required": false
+        },
+        "ADMINS": {
+            "description": "Space-separated admin user IDs (in addition to owner)",
+            "required": false
+        },
+        "STREAM_ENABLED": {
+            "description": "Enable stream/download links (True/False)",
+            "required": false
+        },
+        "STREAM_PORT": {
+            "description": "Stream server port. Default: 8080",
+            "required": false
+        },
+        "STREAM_FQDN": {
+            "description": "Your domain for stream links (e.g., yourapp.koyeb.app)",
+            "required": false
+        },
+        "CLONE_ENABLED": {
+            "description": "Enable clone bot feature (True/False)",
+            "required": false
+        },
+        "DEFAULT_LANGUAGE": {
+            "description": "Default language: en, hi, es, fr, ar, pt, id, tr",
+            "required": false
         }
     },
     "buildpacks": [
