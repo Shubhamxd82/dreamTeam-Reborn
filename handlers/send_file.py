@@ -52,8 +52,25 @@ def format_custom_caption(message: Message, user_mention: str = "", username: st
         return original_caption
 
 
+def _get_stream_buttons(file_id: int):
+    """Build stream/download inline keyboard. Returns list of button rows or []."""
+    if not (Config.STREAM_ENABLED and Config.STREAM_FQDN):
+        return []
+    try:
+        from handlers.stream_handler import get_stream_link, get_download_link
+        stream_link = get_stream_link(file_id)
+        dl_link = get_download_link(file_id)
+        return [[
+            InlineKeyboardButton("▶️ Stream", url=stream_link),
+            InlineKeyboardButton("📥 Download", url=dl_link)
+        ]]
+    except ImportError:
+        logging.warning("stream_handler not available")
+        return []
+
+
 async def reply_forward(message: Message, file_id: int, lang: str = "en"):
-    """Send auto-delete warning reply."""
+    """Send auto-delete warning reply — no stream buttons here."""
     try:
         if Config.AUTO_DELETE_TIME > 0:
             time_str = format_time_seconds(Config.AUTO_DELETE_TIME)
@@ -61,24 +78,10 @@ async def reply_forward(message: Message, file_id: int, lang: str = "en"):
         else:
             warn_text = "📁 Here is your file!"
 
-        buttons = []
-        if Config.STREAM_ENABLED and Config.STREAM_FQDN:
-            try:
-                from handlers.stream_handler import get_stream_link, get_download_link
-                stream_link = get_stream_link(file_id)
-                dl_link = get_download_link(file_id)
-                buttons.append([
-                    InlineKeyboardButton("▶️ Stream", url=stream_link),
-                    InlineKeyboardButton("📥 Download", url=dl_link)
-                ])
-            except ImportError:
-                logging.warning("stream_handler not available")
-
         reply = await message.reply_text(
             warn_text,
             disable_web_page_preview=True,
             quote=True,
-            reply_markup=InlineKeyboardMarkup(buttons) if buttons else None
         )
         return reply
     except FloodWait as e:
@@ -91,8 +94,11 @@ async def reply_forward(message: Message, file_id: int, lang: str = "en"):
 
 
 async def media_forward(bot: Client, user_id: int, file_id: int):
-    """Forward media to user with custom caption and protect content."""
+    """Forward media to user with stream/download buttons under the file."""
     try:
+        buttons = _get_stream_buttons(file_id)
+        reply_markup = InlineKeyboardMarkup(buttons) if buttons else None
+
         if Config.CUSTOM_CAPTION:
             original_msg = await bot.get_messages(
                 chat_id=Config.DB_CHANNEL,
@@ -106,15 +112,16 @@ async def media_forward(bot: Client, user_id: int, file_id: int):
                         from_chat_id=Config.DB_CHANNEL,
                         message_id=file_id,
                         caption=custom_cap,
+                        reply_markup=reply_markup,
                         protect_content=Config.PROTECT_CONTENT
                     )
                 except TypeError:
-                    # Older Pyrogram version doesn't support protect_content
                     return await bot.copy_message(
                         chat_id=user_id,
                         from_chat_id=Config.DB_CHANNEL,
                         message_id=file_id,
-                        caption=custom_cap
+                        caption=custom_cap,
+                        reply_markup=reply_markup
                     )
 
         if Config.FORWARD_AS_COPY:
@@ -123,28 +130,44 @@ async def media_forward(bot: Client, user_id: int, file_id: int):
                     chat_id=user_id,
                     from_chat_id=Config.DB_CHANNEL,
                     message_id=file_id,
+                    reply_markup=reply_markup,
                     protect_content=Config.PROTECT_CONTENT
                 )
             except TypeError:
                 return await bot.copy_message(
                     chat_id=user_id,
                     from_chat_id=Config.DB_CHANNEL,
-                    message_id=file_id
+                    message_id=file_id,
+                    reply_markup=reply_markup
                 )
         else:
+            # forward_messages doesn't support reply_markup,
+            # so forward first then edit the reply_markup
             try:
-                return await bot.forward_messages(
+                sent = await bot.forward_messages(
                     chat_id=user_id,
                     from_chat_id=Config.DB_CHANNEL,
                     message_ids=file_id,
                     protect_content=Config.PROTECT_CONTENT
                 )
             except TypeError:
-                return await bot.forward_messages(
+                sent = await bot.forward_messages(
                     chat_id=user_id,
                     from_chat_id=Config.DB_CHANNEL,
                     message_ids=file_id
                 )
+            # Add buttons by editing reply markup after forward
+            if sent and reply_markup:
+                try:
+                    await bot.edit_message_reply_markup(
+                        chat_id=user_id,
+                        message_id=sent.id,
+                        reply_markup=reply_markup
+                    )
+                except Exception:
+                    pass
+            return sent
+
     except FloodWait as e:
         logging.warning(f"FloodWait in media_forward: {e.value}s")
         await asyncio.sleep(e.value)
