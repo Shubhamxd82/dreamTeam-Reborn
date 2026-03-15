@@ -1,29 +1,489 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Stream Video</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
-body{
-background:black;
-margin:0;
-display:flex;
-justify-content:center;
-align-items:center;
-height:100vh;
-}
-video{
-width:100%;
-max-width:900px;
-}
+  :root {
+    --bg: #080a0f;
+    --surface: #0e1118;
+    --border: rgba(255,255,255,0.06);
+    --accent: #e63946;
+    --accent2: #ff6b6b;
+    --text: #f0f0f0;
+    --muted: #6b7280;
+    --glow: rgba(230, 57, 70, 0.3);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Animated background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(230,57,70,0.12) 0%, transparent 60%),
+      radial-gradient(ellipse 40% 30% at 80% 80%, rgba(230,57,70,0.06) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .noise {
+    position: fixed;
+    inset: 0;
+    opacity: 0.025;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    background-size: 200px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 20px 16px 40px;
+  }
+
+  /* Header */
+  header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 20px 0 32px;
+    animation: fadeDown 0.6s ease both;
+  }
+
+  .logo-mark {
+    width: 36px;
+    height: 36px;
+    background: var(--accent);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 20px var(--glow);
+  }
+
+  .logo-mark svg { width: 18px; height: 18px; fill: white; }
+
+  .logo-text {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 2px;
+    color: var(--text);
+  }
+
+  .badge {
+    margin-left: auto;
+    background: rgba(230,57,70,0.12);
+    border: 1px solid rgba(230,57,70,0.3);
+    color: var(--accent2);
+    font-size: 11px;
+    font-weight: 500;
+    padding: 4px 10px;
+    border-radius: 20px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  /* Video wrapper */
+  .video-wrapper {
+    position: relative;
+    border-radius: 16px;
+    overflow: hidden;
+    background: #000;
+    box-shadow:
+      0 0 0 1px var(--border),
+      0 40px 80px rgba(0,0,0,0.6),
+      0 0 60px rgba(230,57,70,0.08);
+    animation: fadeUp 0.7s ease 0.1s both;
+  }
+
+  .video-wrapper::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 16px;
+    padding: 1px;
+    background: linear-gradient(135deg, rgba(230,57,70,0.3), transparent 50%, rgba(230,57,70,0.1));
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  video {
+    width: 100%;
+    display: block;
+    max-height: 70vh;
+    background: #000;
+  }
+
+  /* Info bar */
+  .info-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 20px 0 0;
+    animation: fadeUp 0.7s ease 0.2s both;
+    flex-wrap: wrap;
+  }
+
+  .file-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .file-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 1.5px;
+    color: var(--text);
+    line-height: 1;
+  }
+
+  .file-meta {
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 0.5px;
+  }
+
+  .action-btns {
+    display: flex;
+    gap: 10px;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s ease;
+    letter-spacing: 0.3px;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: white;
+    box-shadow: 0 4px 20px var(--glow);
+  }
+
+  .btn-primary:hover {
+    background: var(--accent2);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 28px var(--glow);
+  }
+
+  .btn-ghost {
+    background: rgba(255,255,255,0.05);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+
+  .btn-ghost:hover {
+    background: rgba(255,255,255,0.09);
+    transform: translateY(-1px);
+  }
+
+  .btn svg { width: 15px; height: 15px; }
+
+  /* Stats row */
+  .stats-row {
+    display: flex;
+    gap: 1px;
+    margin-top: 20px;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    animation: fadeUp 0.7s ease 0.3s both;
+  }
+
+  .stat {
+    flex: 1;
+    background: var(--surface);
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .stat:not(:last-child) { border-right: 1px solid var(--border); }
+
+  .stat-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--muted);
+  }
+
+  .stat-value {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 17px;
+    letter-spacing: 1px;
+    color: var(--text);
+  }
+
+  /* Progress indicator */
+  .stream-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 20px;
+    padding: 12px 16px;
+    background: rgba(230,57,70,0.06);
+    border: 1px solid rgba(230,57,70,0.15);
+    border-radius: 10px;
+    animation: fadeUp 0.7s ease 0.4s both;
+  }
+
+  .pulse-dot {
+    width: 8px;
+    height: 8px;
+    background: var(--accent);
+    border-radius: 50%;
+    animation: pulse 1.5s ease infinite;
+    box-shadow: 0 0 6px var(--accent);
+    flex-shrink: 0;
+  }
+
+  .stream-indicator span {
+    font-size: 12px;
+    color: var(--accent2);
+    font-weight: 500;
+    letter-spacing: 0.3px;
+  }
+
+  /* Player section */
+  .player-section {
+    margin-top: 20px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    animation: fadeUp 0.7s ease 0.45s both;
+  }
+
+  .player-header {
+    padding: 12px 16px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .player-header svg {
+    width: 14px;
+    height: 14px;
+    fill: none;
+    stroke: var(--muted);
+    stroke-width: 2;
+  }
+
+  .player-header span {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--muted);
+    font-weight: 500;
+  }
+
+  .player-btns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: var(--border);
+  }
+
+  .player-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 16px;
+    background: var(--surface);
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: 'DM Sans', sans-serif;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    border: none;
+  }
+
+  .player-btn:hover { background: rgba(255,255,255,0.04); }
+  .player-btn:active { transform: scale(0.98); }
+
+  .player-btn .player-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .player-btn .player-icon svg { width: 16px; height: 16px; }
+
+  .btn-vlc { color: #f97316; }
+  .btn-vlc .player-icon { background: rgba(249,115,22,0.12); border: 1px solid rgba(249,115,22,0.2); }
+  .btn-vlc .player-icon svg { fill: #f97316; }
+
+  .btn-mx { color: #3b82f6; }
+  .btn-mx .player-icon { background: rgba(59,130,246,0.12); border: 1px solid rgba(59,130,246,0.2); }
+  .btn-mx .player-icon svg { fill: none; stroke: #3b82f6; stroke-width: 2; }
+
+  .player-btn .btn-label { display: flex; flex-direction: column; gap: 2px; }
+  .player-btn .btn-name { font-size: 13px; font-weight: 600; }
+  .player-btn .btn-sub { font-size: 10px; color: var(--muted); font-weight: 400; }
+
+  /* Footer */
+  footer {
+    margin-top: 32px;
+    text-align: center;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.5px;
+    animation: fadeUp 0.7s ease 0.5s both;
+  }
+
+  /* Animations */
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+  }
+
+  /* Mobile */
+  @media (max-width: 600px) {
+    .info-bar { flex-direction: column; align-items: flex-start; }
+    .stats-row { flex-wrap: wrap; }
+    .stat { min-width: 45%; }
+    .btn { padding: 10px 16px; }
+  }
 </style>
 </head>
-
 <body>
+<div class="noise"></div>
+<div class="container">
 
-<video controls autoplay>
-<source src="{{ file_url }}">
-</video>
+  <header>
+    <div class="logo-mark">
+      <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+    </div>
+    <span class="logo-text">StreamVault</span>
+    <span class="badge">● Live</span>
+  </header>
 
+  <div class="video-wrapper">
+    <video controls autoplay playsinline>
+      <source src="{{ file_url }}">
+      Your browser does not support video playback.
+    </video>
+  </div>
+
+  <div class="info-bar">
+    <div class="file-info">
+      <div class="file-name">Now Playing</div>
+      <div class="file-meta">Streaming directly from secure server</div>
+    </div>
+    <div class="action-btns">
+      <a href="{{ file_url }}" download class="btn btn-ghost">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+        Download
+      </a>
+      <button class="btn btn-primary" onclick="document.querySelector('video').requestFullscreen()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/></svg>
+        Fullscreen
+      </button>
+    </div>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat">
+      <div class="stat-label">Source</div>
+      <div class="stat-value">Telegram</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Protocol</div>
+      <div class="stat-value">HTTPS</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Mode</div>
+      <div class="stat-value">Stream</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Status</div>
+      <div class="stat-value">Active</div>
+    </div>
+  </div>
+
+  <div class="stream-indicator">
+    <div class="pulse-dot"></div>
+    <span>Secure stream active — content delivered end-to-end</span>
+  </div>
+
+  <div class="player-section">
+    <div class="player-header">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+      <span>Open in External Player</span>
+    </div>
+    <div class="player-btns">
+      <a href="vlc://{{ file_url }}" class="player-btn btn-vlc">
+        <div class="player-icon">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>
+        </div>
+        <div class="btn-label">
+          <span class="btn-name">VLC Player</span>
+          <span class="btn-sub">Open externally</span>
+        </div>
+      </a>
+      <a href="intent://{{ file_url }}#Intent;package=com.mxtech.videoplayer.ad;type=video/*;end" class="player-btn btn-mx">
+        <div class="player-icon">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+        </div>
+        <div class="btn-label">
+          <span class="btn-name">MX Player</span>
+          <span class="btn-sub">Open externally</span>
+        </div>
+      </a>
+    </div>
+  </div>
+
+  <footer>Powered by StreamVault Bot &nbsp;·&nbsp; Unauthorized redistribution prohibited</footer>
+
+</div>
 </body>
-</html>
+  </html>
