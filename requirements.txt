@@ -5,6 +5,7 @@ aiofiles
 dnspython
 psutil
 aiohttp
+requests
 
 # For Deployable In Koyeb And Render
 Flask==2.3.3
