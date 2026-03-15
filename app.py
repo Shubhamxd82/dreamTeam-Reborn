@@ -1,8 +1,8 @@
 # Web server — also serves as keep-alive for free hosting
 
-from flask import Flask, redirect, Response, request
+from flask import Flask, Response, request
 from configs import Config
-import requests
+import requests as req
 
 app = Flask(__name__)
 
@@ -22,30 +22,35 @@ def hello_world():
     }
 
 
+def _proxy(path, **kwargs):
+    """Forward a request to the internal aiohttp stream server on port 8081."""
+    url = f"http://localhost:8081{path}"
+    headers = {k: v for k, v in request.headers if k.lower() != 'host'}
+    resp = req.get(url, stream=True, headers=headers,
+                   params=request.args, **kwargs)
+    excluded = {'transfer-encoding', 'content-encoding', 'connection'}
+    out_headers = {k: v for k, v in resp.headers.items()
+                   if k.lower() not in excluded}
+    return Response(
+        resp.iter_content(chunk_size=65536),
+        status=resp.status_code,
+        headers=out_headers
+    )
+
+
 @app.route('/watch/<file_id>')
 def watch(file_id):
-    url = f"http://localhost:8081/watch/{file_id}"
-    resp = requests.get(url, stream=True, params=request.args)
-    return Response(
-        resp.iter_content(chunk_size=1024),
-        content_type=resp.headers.get('Content-Type', 'text/html'),
-        status=resp.status_code
-    )
+    return _proxy(f"/watch/{file_id}")
+
+
+@app.route('/stream/<file_id>')
+def stream(file_id):
+    return _proxy(f"/stream/{file_id}")
 
 
 @app.route('/dl/<file_id>')
 def download(file_id):
-    url = f"http://localhost:8081/dl/{file_id}"
-    resp = requests.get(url, stream=True, params=request.args)
-    return Response(
-        resp.iter_content(chunk_size=1024),
-        content_type=resp.headers.get('Content-Type', 'application/octet-stream'),
-        status=resp.status_code,
-        headers={
-            'Content-Disposition': resp.headers.get('Content-Disposition', ''),
-            'Content-Length': resp.headers.get('Content-Length', '')
-        }
-    )
+    return _proxy(f"/dl/{file_id}")
 
 
 if __name__ == "__main__":
