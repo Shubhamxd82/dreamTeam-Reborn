@@ -6,6 +6,7 @@ dnspython
 psutil
 aiohttp
 requests
+gevent
 
 # For Deployable In Koyeb And Render
 Flask==2.3.3
