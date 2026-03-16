@@ -162,10 +162,7 @@ class Database:
         return await self.clone_col.find_one({'user_id': int(user_id), 'is_active': True})
 
     async def remove_clone(self, user_id: int):
-        await self.clone_col.update_one(
-            {'user_id': int(user_id)},
-            {'$set': {'is_active': False}}
-        )
+        await self.clone_col.delete_many({'user_id': int(user_id)})
 
     async def get_all_clones(self):
         return self.clone_col.find({'is_active': True})
