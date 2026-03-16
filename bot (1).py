@@ -1,4 +1,4 @@
-# (c) @harshil8981 — Enhanced V2 with all features
+# (c) @Shubhlinks — Enhanced V2 with all features
 
 import os
 import asyncio
