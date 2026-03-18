@@ -75,9 +75,9 @@ async def start_serve_bot(main_bot: Client):
         if not start_param:
             await cmd.reply_text(
                 "👋 **Hello!**\n\n"
-                "I'm a dedicated file serving bot.\n\n"
-                "📁 Click any file link to receive your file instantly!\n\n"
-                f"🤖 Main Bot: @{Config.BOT_USERNAME}",
+                "I'm Just a file serving bot.\n\n"
+                "📁 Use Our Main Bot to Get Access of files Here.\n\n"
+                f"🤖 Main Bot: [WONDER MAN](https://t.me/{Config.BOT_USERNAME})",
                 quote=True
             )
             return
