@@ -76,7 +76,7 @@ async def start_serve_bot(main_bot: Client):
             await cmd.reply_text(
                 "👋 **Hello!**\n\n"
                 "I'm Just a file serving bot.\n\n"
-                "📁 Use Our Main Bot to Get Access of files Here.\n\n"
+                "📁 Use Our **Main Bot** to Get Access of files Here.\n\n"
                 f"🤖 Main Bot: [WONDER MAN](https://t.me/{Config.BOT_USERNAME})",
                 quote=True,
                 disable_web_page_preview=True
@@ -180,8 +180,9 @@ async def start_serve_bot(main_bot: Client):
     async def serve_fallback(bot, cmd):
         """Catch all other commands and messages — redirect to main bot."""
         await cmd.reply_text(
-            "❌ **This bot only serves files!**\n\n"
-            "📌 Please use our **Main Bot** for all commands and features.\n\n"
+            "👋 **Hello!**\n\n"
+            "I'm Just a file serving bot.\n\n"
+            "📁 Use Our **Main Bot** to Get Access of files Here.\n\n"
             f"🤖 Main Bot: [WONDER MAN](https://t.me/{Config.BOT_USERNAME})",
             quote=True,
             disable_web_page_preview=True
