@@ -217,11 +217,11 @@ STREAM_HTML = """<!DOCTYPE html>
 
     function mx_player() {
       var clean = streamUrl.replace(/^https?:\\/\\//, '');
-      window.location.href = 'intent://' + clean + '#Intent;package=com.mxtech.videoplayer.ad;type=video/*;scheme=https;end';
+      window.location.href = 'intent://' + clean + '#Intent;scheme=https;package=com.mxtech.videoplayer.ad;action=android.intent.action.VIEW;type=video/*;end';
     }
     function vlc_player() {
       var clean = streamUrl.replace(/^https?:\\/\\//, '');
-      window.location.href = 'intent://' + clean + '#Intent;package=org.videolan.vlc;type=video/*;scheme=https;end';
+      window.location.href = 'intent://' + clean + '#Intent;scheme=https;package=org.videolan.vlc;action=android.intent.action.VIEW;type=video/*;end';
     }
     function streamDownload() {
       window.location.href = downloadUrl;
