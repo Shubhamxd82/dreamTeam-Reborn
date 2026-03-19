@@ -174,9 +174,9 @@ STREAM_HTML = """<!DOCTYPE html>
     <!-- File Info -->
     <div class="glass-card">
       <div class="file-info-title"><i class="fa-solid fa-circle-info me-2"></i> File Details</div>
-      <div class="info-item">
+      <div class="info-item" style="flex-direction: column; gap: 4px;">
         <span class="info-label">Filename</span>
-        <span class="info-value">FILE_NAME_PLACEHOLDER</span>
+        <span class="info-value" style="word-break: break-word;">FILE_NAME_PLACEHOLDER</span>
       </div>
       <div class="info-item">
         <span class="info-label">Size</span>
