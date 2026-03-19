@@ -7,8 +7,6 @@ psutil
 aiohttp
 requests
 gevent
-fastapi
-uvicorn
 
 # For Deployable In Koyeb And Render
 Flask==2.3.3
