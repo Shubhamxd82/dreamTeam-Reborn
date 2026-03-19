@@ -778,7 +778,7 @@ async def main():
     except Exception as e:
         logger.error(f"FileServeBot failed to start: {e}")
 
-    logger.info("All features initialized! Bot is running.")
+    logger.info("All features initialized! Bot is running. 🚀")
 
     # Keep running
     await asyncio.Event().wait()
