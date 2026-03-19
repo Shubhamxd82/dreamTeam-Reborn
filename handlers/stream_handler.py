@@ -1,22 +1,15 @@
-# Stream/Download Link Handler — Feature 10 (FastAPI)
+# Stream/Download Link Handler — Feature 10
 
 import logging
-import hashlib
-import base64
-import re
-import os
-import asyncio
-import uvicorn
-from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, Response
+from aiohttp import web
 from pyrogram import Client
 from configs import Config
-from handlers.helpers import humanbytes
+from handlers.helpers import str_to_b64, b64_to_str, humanbytes
 
 logging.basicConfig(level=logging.INFO)
 
+routes = web.RouteTableDef()
 bot_client = None
-app = FastAPI()
 
 # ── Embedded HTML templates ────────────────────────────────────────────────────
 
@@ -235,7 +228,6 @@ DOWNLOAD_HTML = """<!DOCTYPE html>
 </body>
 </html>"""
 
-
 # ── Bot client ─────────────────────────────────────────────────────────────────
 
 def set_bot_client(client: Client):
@@ -244,6 +236,15 @@ def set_bot_client(client: Client):
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
+
+@routes.get("/")
+async def root_handler(request):
+    return web.json_response({
+        "status": "alive",
+        "bot": Config.BOT_USERNAME,
+        "stream": Config.STREAM_ENABLED
+    })
+
 
 async def get_media_message(file_id: int):
     try:
@@ -270,172 +271,147 @@ def get_media_info(message):
     return file_name, file_size, mime_type, file_id
 
 
-# ── Link generators (used by send_file.py and serve_bot.py) ───────────────────
-
-def _make_hash(file_id: int) -> str:
-    raw = hashlib.sha256(
-        f"{file_id}{Config.LINK_SECRET_KEY}".encode()
-    ).digest()[:6]
-    return base64.urlsafe_b64encode(raw).decode().rstrip("=")
-
-
-def _safe_filename(filename: str) -> str:
-    name, ext = os.path.splitext(filename)
-    clean = re.sub(r'[^\w\s\-.]', '', name)
-    clean = clean.strip().replace(' ', '+')
-    clean = clean[:30].rstrip('+')
-    return clean + ext
-
-
-def get_stream_link(file_id: int, filename: str = "file") -> str:
-    base_url = Config.get_stream_base_url()
-    h = _make_hash(file_id)
-    fn = _safe_filename(filename)
-    return f"{base_url}/watch/{file_id}/{fn}?hash={h}"
-
-
-def get_download_link(file_id: int, filename: str = "file") -> str:
-    base_url = Config.get_stream_base_url()
-    h = _make_hash(file_id)
-    fn = _safe_filename(filename)
-    return f"{base_url}/dl/{file_id}/{fn}?hash={h}"
-
-
 # ── Routes ─────────────────────────────────────────────────────────────────────
 
-@app.get("/")
-async def root_handler():
-    return JSONResponse({
-        "status": "alive",
-        "bot": Config.BOT_USERNAME,
-        "stream": Config.STREAM_ENABLED
-    })
-
-
-@app.get("/serve_bot")
-async def serve_bot_handler():
-    try:
-        from handlers.serve_bot import get_serve_bot
-        sb = get_serve_bot()
-        if sb:
-            me = await sb.get_me()
-            return JSONResponse({"username": me.username})
-    except Exception:
-        pass
-    return JSONResponse({"username": ""})
-
-
-@app.get("/watch/{msg_id}/{filename:path}")
-async def watch_page_handler(msg_id: int, filename: str, request: Request):
+@routes.get("/watch/{encoded_id}")
+async def watch_page_handler(request):
     """Serve the HTML player page."""
     try:
+        encoded_id = request.match_info["encoded_id"]
         base_url = Config.get_stream_base_url()
-        h = _make_hash(msg_id)
-        stream_url = f"{base_url}/stream/{msg_id}/{filename}?hash={h}"
-        download_url = f"{base_url}/dl/{msg_id}/{filename}?hash={h}"
+        stream_url = f"{base_url}/stream/{encoded_id}"
+        download_url = f"{base_url}/dl/{encoded_id}"
         html = STREAM_HTML.replace("STREAM_URL_PLACEHOLDER", stream_url)
         html = html.replace("DOWNLOAD_URL_PLACEHOLDER", download_url)
-        return HTMLResponse(content=html)
+        return web.Response(text=html, content_type="text/html")
     except Exception as e:
         logging.error(f"Watch page error: {e}")
-        return HTMLResponse(content=f"Error: {e}", status_code=500)
+        return web.Response(text=f"Error: {e}", status=500)
 
 
-@app.get("/stream/{msg_id}/{filename:path}")
-async def stream_handler(msg_id: int, filename: str, request: Request):
+@routes.get("/stream/{encoded_id}")
+async def stream_handler(request):
     """Stream raw video bytes — called by the HTML <video> tag."""
     try:
+        encoded_id = request.match_info["encoded_id"]
+        try:
+            msg_id = int(b64_to_str(encoded_id))
+        except Exception:
+            msg_id = int(encoded_id)
+
         message = await get_media_message(msg_id)
         if not message:
-            return Response(content="File not found", status_code=404)
+            return web.Response(text="File not found", status=404)
 
         file_name, file_size, mime_type, _ = get_media_info(message)
         if file_name is None:
-            return Response(content="Not a downloadable file", status_code=400)
+            return web.Response(text="Not a downloadable file", status=400)
 
-        range_header = request.headers.get("Range")
+        range_header = request.headers.get('Range')
         if range_header:
-            range_spec = range_header.replace("bytes=", "")
-            parts = range_spec.split("-")
+            range_spec = range_header.replace('bytes=', '')
+            parts = range_spec.split('-')
             start = int(parts[0]) if parts[0] else 0
             end = int(parts[1]) if len(parts) > 1 and parts[1] else file_size - 1
-            status_code = 206
+            status = 206
         else:
             start = 0
             end = file_size - 1
-            status_code = 200
+            status = 200
 
         content_length = end - start + 1
 
-        async def stream_generator():
-            async for chunk in bot_client.stream_media(message, offset=start, limit=content_length):
-                yield chunk
-
         headers = {
-            "Content-Disposition": f'inline; filename="{file_name}"',
-            "Content-Length": str(content_length),
-            "Accept-Ranges": "bytes",
-            "Content-Range": f"bytes {start}-{end}/{file_size}",
+            'Content-Type': mime_type,
+            'Content-Disposition': f'inline; filename="{file_name}"',
+            'Content-Length': str(content_length),
+            'Accept-Ranges': 'bytes',
+            'Content-Range': f'bytes {start}-{end}/{file_size}',
         }
 
-        return StreamingResponse(
-            stream_generator(),
-            status_code=status_code,
-            headers=headers,
-            media_type=mime_type
-        )
+        response = web.StreamResponse(status=status, headers=headers)
+        await response.prepare(request)
+
+        async for chunk in bot_client.stream_media(message, offset=start, limit=content_length):
+            try:
+                await response.write(chunk)
+            except (ConnectionResetError, ConnectionError, Exception):
+                return response
+
+        await response.write_eof()
+        return response
 
     except (ConnectionResetError, ConnectionError):
-        return Response(status_code=499)
+        return web.Response(status=499)
     except Exception as e:
         logging.error(f"Stream error: {e}")
-        return Response(content=f"Error: {e}", status_code=500)
+        return web.Response(text=f"Error: {e}", status=500)
 
 
-@app.get("/dl/{msg_id}/{filename:path}")
-async def download_handler(msg_id: int, filename: str, request: Request):
-    """Serve download page on browser visit; raw file on direct request."""
+@routes.get("/dl/{encoded_id}")
+async def download_handler(request):
+    """Serve download page on browser visit; raw file on direct/non-html request."""
     try:
+        encoded_id = request.match_info["encoded_id"]
         accept = request.headers.get("Accept", "")
-        direct = request.query_params.get("direct")
 
-        # Browser visit → show download page
-        if "text/html" in accept and not direct:
+        # Browser visit → show premium download page
+        if "text/html" in accept and "direct" not in request.query:
             base_url = Config.get_stream_base_url()
-            h = _make_hash(msg_id)
-            file_url = f"{base_url}/dl/{msg_id}/{filename}?hash={h}&direct=1"
+            file_url = f"{base_url}/dl/{encoded_id}?direct=1"
             html = DOWNLOAD_HTML.replace("FILE_URL_PLACEHOLDER", file_url)
-            return HTMLResponse(content=html)
+            return web.Response(text=html, content_type="text/html")
 
         # Actual file download
+        try:
+            msg_id = int(b64_to_str(encoded_id))
+        except Exception:
+            msg_id = int(encoded_id)
+
         message = await get_media_message(msg_id)
         if not message:
-            return Response(content="File not found", status_code=404)
+            return web.Response(text="File not found", status=404)
 
         file_name, file_size, mime_type, _ = get_media_info(message)
         if file_name is None:
-            return Response(content="Not a downloadable file", status_code=400)
-
-        async def download_generator():
-            async for chunk in bot_client.stream_media(message, offset=0, limit=file_size):
-                yield chunk
+            return web.Response(text="Not a downloadable file", status=400)
 
         headers = {
-            "Content-Disposition": f'attachment; filename="{file_name}"',
-            "Content-Length": str(file_size),
-            "Accept-Ranges": "bytes",
+            'Content-Type': mime_type,
+            'Content-Disposition': f'attachment; filename="{file_name}"',
+            'Content-Length': str(file_size),
+            'Accept-Ranges': 'bytes',
         }
 
-        return StreamingResponse(
-            download_generator(),
-            status_code=200,
-            headers=headers,
-            media_type=mime_type
-        )
+        response = web.StreamResponse(status=200, headers=headers)
+        await response.prepare(request)
+
+        async for chunk in bot_client.stream_media(message, offset=0, limit=file_size):
+            try:
+                await response.write(chunk)
+            except (ConnectionResetError, ConnectionError):
+                return response
+
+        await response.write_eof()
+        return response
 
     except Exception as e:
         logging.error(f"Download error: {e}")
-        return Response(content=f"Error: {e}", status_code=500)
+        return web.Response(text=f"Error: {e}", status=500)
+
+
+# ── Link generators (used by send_file.py) ─────────────────────────────────────
+
+def get_stream_link(file_id: int) -> str:
+    encoded = str_to_b64(str(file_id))
+    base_url = Config.get_stream_base_url()
+    return f"{base_url}/watch/{encoded}"
+
+
+def get_download_link(file_id: int) -> str:
+    encoded = str_to_b64(str(file_id))
+    base_url = Config.get_stream_base_url()
+    return f"{base_url}/dl/{encoded}"
 
 
 # ── Server startup ─────────────────────────────────────────────────────────────
@@ -444,13 +420,10 @@ async def start_stream_server():
     if not Config.STREAM_ENABLED:
         return
 
-    config = uvicorn.Config(
-        app=app,
-        host="0.0.0.0",
-        port=Config.STREAM_PORT,
-        log_level="info",
-        limit_concurrency=100,
-    )
-    server = uvicorn.Server(config)
-    asyncio.create_task(server.serve())
+    app = web.Application(client_max_size=50 * 1024 * 1024)
+    app.add_routes(routes)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, "0.0.0.0", Config.STREAM_PORT)
+    await site.start()
     logging.info(f"Stream server started on port {Config.STREAM_PORT}")
