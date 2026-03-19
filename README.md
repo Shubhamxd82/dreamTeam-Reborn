@@ -94,7 +94,7 @@ Users can switch their preferred language using `/language` command or the 🌐 
 | `BOT_USERNAME` | Bot username **without @** | `MyFileStoreBot` |
 | `DB_CHANNEL` | Private channel ID for file storage (bot must be admin) | `-1001234567890` |
 | `BOT_OWNER` | Your Telegram user ID | `123456789` |
-| `DATABASE_URL` | MongoDB connection URI | `mongodb+srv://user:pass@cluster.mongodb.net` |
+| `DATABASE_URL` | MongoDB connection URI | `` |
 | `LOG_CHANNEL` | Channel ID for bot logs | `-1001234567890` |
 
 ### 🟡 Optional Variables — Features
