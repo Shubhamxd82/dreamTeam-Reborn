@@ -182,8 +182,12 @@ STREAM_HTML = """<!DOCTYPE html>
         <span class="info-label">Size</span>
         <span class="info-value">FILE_SIZE_PLACEHOLDER</span>
       </div>
+      <div style="margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1);">
+        <span class="info-label">Powered by: </span>
+        <span class="info-value"><a href="https://t.me/Shubhlinks" target="_blank" style="color: var(--primary-color); text-decoration: none;">Shubhlinks</a></span>
+      </div>
     </div>
-
+ 
     <!-- Share -->
     <button onclick="shareButton()" class="btn btn-custom btn-share">
       <i class="fa-solid fa-share-nodes"></i> &nbsp; Share with Friends
