@@ -472,6 +472,48 @@ async def start_clone_bot(owner_user_id: int, bot_token: str, db_channel: int) -
                     pass
             await cmd.reply_text(message_text, reply_markup=markup, disable_web_page_preview=True)
 
+        @clone.on_message(filters.command("help") & filters.private)
+        async def clone_help(bot, cmd):
+            """Show help message explaining how to use the bot."""
+            clone_data = await db.get_clone(owner_user_id)
+            settings = clone_data.get('settings', {}) if clone_data else {}
+            backup_ch = settings.get('backup_channel')
+
+            text = (
+                "📖 **How to Use This Bot**\n\n"
+                "This bot stores your files and gives you a **permanent share link** that never expires!\n\n"
+                "**📤 How to get a link:**\n"
+                "1. Send any file (document, video, audio)\n"
+                "2. Tap **Get Link**\n"
+                "3. Copy and share the link anywhere!\n\n"
+                "**📦 How to get a batch link:**\n"
+                "1. Send multiple files one by one\n"
+                "2. Tap **Save to Batch** on each file\n"
+                "3. On the last file tap **Get Batch Link**\n"
+                "4. One link opens all files together!\n\n"
+                "**✅ Supported file types:**\n"
+                "• Documents 📄\n"
+                "• Videos 🎬\n"
+                "• Audio 🎵\n\n"
+                "**🔗 How to open a link:**\n"
+                "Just click any link shared by this bot — "
+                "the file will be sent to you instantly!\n\n"
+                f"❓ Need more help? Visit the main bot 👇"
+            )
+
+            buttons = [
+                [InlineKeyboardButton("🤖 Main Bot", url=f"https://t.me/{Config.BOT_USERNAME}")]
+            ]
+            if backup_ch:
+                buttons.append([InlineKeyboardButton("📢 Backup Channel", url=backup_ch)])
+
+            await cmd.reply_text(
+                text,
+                reply_markup=InlineKeyboardMarkup(buttons),
+                disable_web_page_preview=True,
+                quote=True
+            )
+
 
         @clone.on_message((filters.document | filters.video | filters.audio) & filters.private)
         async def clone_file_handler(bot, message):
