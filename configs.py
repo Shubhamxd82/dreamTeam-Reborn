@@ -138,7 +138,7 @@ AS i Said, Send me any File & It will be uploaded in My Database & You will Get 
 │
 ├🔹©️ **Powered By:** [𝐌𝐨𝐯𝐢𝐞𝐬𝐬𝐬𝟒𝐞𝐫𝐬](https://t.me/Moviesss4ers)
 │
-╰──────[ 😎 ]───────────⍟
+╰──────[ 😎 ]────────⍟
 """
     ABOUT_DEV_TEXT = f"""
 🧑🏻‍💻 **𝗗𝗲𝘃𝗲𝗹𝗼𝗽𝗲𝗿:** [【﻿Dengerous】](https://t.me/Dengerous53) 
@@ -149,7 +149,7 @@ AS i Said, Send me any File & It will be uploaded in My Database & You will Get 
 
 """
     HOME_TEXT = """
-Hello, [{}](tg://user?id={})\n\nThis is a Literally Permanent **FileStore Bot**.
+Hello, [{}](tg://user?id={})\n\nThis is a Literally Permanent **File Store Bot**.
 
 How to Use Bot & it's Benefits??
 
