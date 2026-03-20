@@ -470,7 +470,7 @@ async def start_clone_bot(owner_user_id: int, bot_token: str, db_channel: int) -
                     return
                 except Exception:
                     pass
-            await cmd.reply_text(message_text, reply_markup=markup)
+            await cmd.reply_text(message_text, reply_markup=markup, disable_web_page_preview=True)
 
 
         @clone.on_message((filters.document | filters.video | filters.audio) & filters.private)
