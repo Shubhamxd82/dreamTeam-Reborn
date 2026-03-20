@@ -178,7 +178,7 @@ STREAM_HTML = """<!DOCTYPE html>
         <span class="info-label">Filename</span>
         <span class="info-value" style="word-break: break-word;">FILE_NAME_PLACEHOLDER</span>
       </div>
-      <div class="info-item">
+      <div class="info-item" style="flex-direction: column; gap: 4px;">
         <span class="info-label">Size</span>
         <span class="info-value">FILE_SIZE_PLACEHOLDER</span>
       </div>
