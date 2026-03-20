@@ -174,11 +174,11 @@ STREAM_HTML = """<!DOCTYPE html>
     <!-- File Info -->
     <div class="glass-card">
       <div class="file-info-title"><i class="fa-solid fa-circle-info me-2"></i> File Details</div>
-      <div class="info-item" style="flex-direction: column; gap: 4px;">
-        <span class="info-label">Filename</span>
-        <span class="info-value" style="word-break: break-word;">FILE_NAME_PLACEHOLDER</span>
+      <div style="margin-bottom: 8px; word-break: break-word;">
+        <span class="info-label">Filename: </span>
+        <span class="info-value">FILE_NAME_PLACEHOLDER</span>
       </div>
-      <div class="info-item" style="flex-direction: column; gap: 4px;">
+      <div style="margin-bottom: 8px;">
         <span class="info-label">Size</span>
         <span class="info-value">FILE_SIZE_PLACEHOLDER</span>
       </div>
