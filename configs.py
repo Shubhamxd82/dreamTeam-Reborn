@@ -134,6 +134,8 @@ AS i Said, Send me any File & It will be uploaded in My Database & You will Get 
 │
 ├🔸👨‍💻 **Owner:** [𝐒𝐡𝐮𝐛𝐡𝐚𝐦](https://t.me/Nexus_Shubhu) 
 │
+├🔹📡 **Secured By:** [𝐂𝐥𝐨𝐮𝐝𝐟𝐥𝐚𝐫𝐞](https://workers.cloudflare.com/)
+│
 ├🔹©️ **Powered By:** [𝐌𝐨𝐯𝐢𝐞𝐬𝐬𝐬𝟒𝐞𝐫𝐬](https://t.me/Moviesss4ers)
 │
 ╰──────[ 😎 ]───────────⍟
