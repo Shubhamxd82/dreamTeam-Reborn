@@ -453,7 +453,8 @@ async def start_clone_bot(owner_user_id: int, bot_token: str, db_channel: int) -
 
             # No param — show welcome message
             default_msg = (
-                f"Hello! I'm a clone of @{Config.BOT_USERNAME}.\n\n"
+                "Hello, I'm just a clone of main bot"
+                f"Main bot: [𝐖𝐨𝐧𝐝𝐞𝐫 𝐌𝐚𝐧](https://t.me/{Config.BOT_USERNAME})\n\n"
                 "Send me any file and I'll give you a permanent link!"
             )
             message_text = start_msg if start_msg else default_msg
