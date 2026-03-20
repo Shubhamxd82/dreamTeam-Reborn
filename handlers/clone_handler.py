@@ -498,7 +498,7 @@ async def start_clone_bot(owner_user_id: int, bot_token: str, db_channel: int) -
                 "**🔗 How to open a link:**\n"
                 "Just click any link shared by this bot — "
                 "the file will be sent to you instantly!\n\n"
-                f"❓ Need more help? Visit the main bot 👇"
+                f"Need more help? Visit **Main Bot** 👇"
             )
 
             buttons = [
