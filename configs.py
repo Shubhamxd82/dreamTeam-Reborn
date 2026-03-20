@@ -28,11 +28,11 @@ class Config(object):
     AUTO_DELETE_TIME = int(os.environ.get("AUTO_DELETE_TIME", "600"))
     AUTO_DELETE_MSG = os.environ.get(
         "AUTO_DELETE_MSG",
-        "⚠️ <b>This file will be auto-deleted in <u>{time}</u>.</b>\n\n📌 Please save/forward it before deletion!"
+        "⚠️ <b>Due To Copyright This file will deleted after <u>{time}</u>.</b>\n\n📌 Please save/forward it before download!"
     )
     AUTO_DELETE_FINAL_MSG = os.environ.get(
         "AUTO_DELETE_FINAL_MSG",
-        "✅ File was auto-deleted to prevent copyright issues.\n\n🔁 Click the link again to re-download."
+        "✅ File was auto-deleted to prevent copyright.\n\n©️ <b>Powered by @Moviesss4ers 🏆.</b>"
     )
 
     # ==================== FEATURE 2: CUSTOM CAPTION ====================
