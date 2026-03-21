@@ -17,7 +17,8 @@ LANGUAGES = {
         "choose_option": "**Choose an option from below:**",
         "file_stored": "**Your File Stored in Database ✅**\n\nHere is the Permanent Link of your file: {link}\n\nClick **Open Link** to get your file!",
         "batch_stored": "**Batch Files Stored in Database ✅**\n\nHere is the Permanent Link of your files: {link}\n\nClick **Open Link** to get your files!",
-        "batch_added": "File Saved in Batch!\n\nPress below button to get batch link.",
+        "batch_added": "File Saved in Batch! ({count}/20)\n\nPress below button to get batch link.",
+        "batch_limit": "⚠️ **Batch Limit Reached!**\n\nYou can only add up to **20 files** in one batch.\n\nUse /clear_batch to start a new batch.",
         "get_batch_link": "Get Batch Link",
         "open_link": "Open Link",
         "close_msg": "Close Message",
@@ -60,7 +61,8 @@ LANGUAGES = {
         "choose_option": "**नीचे से एक विकल्प चुनें:**",
         "file_stored": "**आपकी फाइल डेटाबेस में स्टोर हो गई ✅**\n\nआपकी फाइल का स्थायी लिंक: {link}\n\n**Open Link** पर क्लिक करें!",
         "batch_stored": "**बैच फाइलें डेटाबेस में स्टोर हो गईं ✅**\n\nआपकी फाइलों का स्थायी लिंक: {link}\n\n**Open Link** पर क्लिक करें!",
-        "batch_added": "फाइल बैच में सेव हो गई!\n\nबैच लिंक प्राप्त करने के लिए नीचे बटन दबाएं।",
+        "batch_added": "फाइल बैच में सेव हो गई! ({count}/20)\n\nबैच लिंक प्राप्त करने के लिए नीचे बटन दबाएं।",
+        "batch_limit": "⚠️ **बैच सीमा पहुँच गई!**\n\nआप एक बैच में अधिकतम **20 फाइलें** ही जोड़ सकते हैं।\n\nनया बैच शुरू करने के लिए /clear_batch उपयोग करें।",
         "get_batch_link": "बैच लिंक प्राप्त करें",
         "open_link": "लिंक खोलें",
         "close_msg": "बंद करें",
@@ -103,7 +105,8 @@ LANGUAGES = {
         "choose_option": "**Elige una opción:**",
         "file_stored": "**Archivo almacenado ✅**\n\nEnlace permanente: {link}",
         "batch_stored": "**Archivos en lote almacenados ✅**\n\nEnlace permanente: {link}",
-        "batch_added": "¡Archivo guardado en lote!\n\nPresiona el botón para obtener el enlace.",
+        "batch_added": "¡Archivo guardado en lote! ({count}/20)\n\nPresiona el botón para obtener el enlace.",
+        "batch_limit": "⚠️ **¡Límite de lote alcanzado!**\n\nSolo puedes agregar hasta **20 archivos** por lote.\n\nUsa /clear_batch para empezar un nuevo lote.",
         "get_batch_link": "Obtener Enlace del Lote",
         "open_link": "Abrir Enlace",
         "close_msg": "Cerrar",
@@ -146,7 +149,8 @@ LANGUAGES = {
         "choose_option": "**Choisissez une option:**",
         "file_stored": "**Fichier stocké ✅**\n\nLien permanent: {link}",
         "batch_stored": "**Fichiers en lot stockés ✅**\n\nLien: {link}",
-        "batch_added": "Fichier ajouté au lot!",
+        "batch_added": "Fichier ajouté au lot! ({count}/20)",
+        "batch_limit": "⚠️ **Limite de lot atteinte!**\n\nVous ne pouvez ajouter que **20 fichiers** par lot.\n\nUtilisez /clear_batch pour démarrer un nouveau lot.",
         "get_batch_link": "Obtenir le Lien du Lot",
         "open_link": "Ouvrir",
         "close_msg": "Fermer",
@@ -189,7 +193,8 @@ LANGUAGES = {
         "choose_option": "**اختر خياراً:**",
         "file_stored": "**تم تخزين الملف ✅**\n\nالرابط: {link}",
         "batch_stored": "**تم تخزين الدفعة ✅**\n\nالرابط: {link}",
-        "batch_added": "تمت الإضافة للدفعة!",
+        "batch_added": "تمت الإضافة للدفعة! ({count}/20)",
+        "batch_limit": "⚠️ **تم الوصول لحد الدفعة!**\n\nيمكنك إضافة **20 ملفاً** فقط في كل دفعة.\n\nاستخدم /clear_batch لبدء دفعة جديدة.",
         "get_batch_link": "رابط الدفعة",
         "open_link": "فتح",
         "close_msg": "إغلاق",
@@ -232,7 +237,8 @@ LANGUAGES = {
         "choose_option": "**Escolha uma opção:**",
         "file_stored": "**Arquivo armazenado ✅**\n\nLink: {link}",
         "batch_stored": "**Lote armazenado ✅**\n\nLink: {link}",
-        "batch_added": "Adicionado ao lote!",
+        "batch_added": "Adicionado ao lote! ({count}/20)",
+        "batch_limit": "⚠️ **Limite do lote atingido!**\n\nVocê só pode adicionar até **20 arquivos** por lote.\n\nUse /clear_batch para iniciar um novo lote.",
         "get_batch_link": "Link do Lote",
         "open_link": "Abrir",
         "close_msg": "Fechar",
@@ -275,7 +281,8 @@ LANGUAGES = {
         "choose_option": "**Pilih opsi:**",
         "file_stored": "**File tersimpan ✅**\n\nLink: {link}",
         "batch_stored": "**Batch tersimpan ✅**\n\nLink: {link}",
-        "batch_added": "Ditambahkan ke batch!",
+        "batch_added": "Ditambahkan ke batch! ({count}/20)",
+        "batch_limit": "⚠️ **Batas batch tercapai!**\n\nAnda hanya bisa menambahkan **20 file** per batch.\n\nGunakan /clear_batch untuk memulai batch baru.",
         "get_batch_link": "Link Batch",
         "open_link": "Buka",
         "close_msg": "Tutup",
@@ -318,7 +325,8 @@ LANGUAGES = {
         "choose_option": "**Bir seçenek seçin:**",
         "file_stored": "**Dosya kaydedildi ✅**\n\nLink: {link}",
         "batch_stored": "**Toplu dosyalar kaydedildi ✅**\n\nLink: {link}",
-        "batch_added": "Topluya eklendi!",
+        "batch_added": "Topluya eklendi! ({count}/20)",
+        "batch_limit": "⚠️ **Toplu sınırına ulaşıldı!**\n\nBir topluya en fazla **20 dosya** ekleyebilirsiniz.\n\nYeni bir toplu başlatmak için /clear_batch kullanın.",
         "get_batch_link": "Toplu Link",
         "open_link": "Aç",
         "close_msg": "Kapat",
@@ -346,22 +354,20 @@ LANGUAGES = {
         "go_home": "Ana Sayfa",
     },
 }
-
-
+ 
+ 
 def get_text(lang_code: str, key: str) -> str:
     """Get translated text for a given language and key. Falls back to English."""
     lang = LANGUAGES.get(lang_code, LANGUAGES["en"])
     return lang.get(key, LANGUAGES["en"].get(key, key))
-
-
+ 
+ 
 def get_all_lang_codes() -> list:
     """Get all supported language codes."""
     return list(LANGUAGES.keys())
-
-
+ 
+ 
 def get_lang_name(lang_code: str) -> str:
     """Get the display name for a language code."""
     return LANGUAGES.get(lang_code, LANGUAGES["en"]).get("lang_name", lang_code)
-
-
-
+ 
