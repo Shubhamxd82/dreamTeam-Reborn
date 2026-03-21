@@ -28,7 +28,7 @@ async def send_msg(user_id, message):
         return 200, None
     except FloodWait as e:
         await asyncio.sleep(e.value)
-        return send_msg(user_id, message)
+        return await send_msg(user_id, message)  # fixed: was missing await
     except InputUserDeactivated:
         return 400, f"{user_id} : deactivated\n"
     except UserIsBlocked:
@@ -47,7 +47,7 @@ async def main_broadcast_handler(m, db):
         if not broadcast_ids.get(broadcast_id):
             break
     out = await m.reply_text(
-        text=f"Broadcast Started! You will be notified with log file when all the users are notified."
+        text="📡 **Broadcast Started!**\n\n⏳ Progress: `0` done — `0` ✅ success, `0` ❌ failed"
     )
     start_time = time.time()
     total_users = await db.total_users_count()
@@ -85,6 +85,21 @@ async def main_broadcast_handler(m, db):
                         success=success
                     )
                 )
+            # Live progress update every 20 users
+            if done % 20 == 0:
+                try:
+                    elapsed = datetime.timedelta(seconds=int(time.time() - start_time))
+                    await out.edit(
+                        f"📡 **Broadcast In Progress...**\n\n"
+                        f"👥 Total Users: `{total_users}`\n"
+                        f"✅ Success: `{success}`\n"
+                        f"❌ Failed: `{failed}`\n"
+                        f"📊 Done: `{done}/{total_users}`\n"
+                        f"⏱ Elapsed: `{elapsed}`"
+                    )
+                except Exception:
+                    pass  # silently skip if edit fails (e.g. message deleted)
+
     if broadcast_ids.get(broadcast_id):
         broadcast_ids.pop(broadcast_id)
     completed_in = datetime.timedelta(seconds=int(time.time() - start_time))
@@ -92,13 +107,13 @@ async def main_broadcast_handler(m, db):
     await out.delete()
     if failed == 0:
         await m.reply_text(
-            text=f"broadcast completed in `{completed_in}`\n\nTotal users {total_users}.\nTotal done {done}, {success} success and {failed} failed.",
+            text=f"✅ **Broadcast Completed!**\n\n⏱ Time taken: `{completed_in}`\n👥 Total users: `{total_users}`\n✅ Success: `{success}`\n❌ Failed: `{failed}`",
             quote=True
         )
     else:
         await m.reply_document(
             document='broadcast.txt',
-            caption=f"broadcast completed in `{completed_in}`\n\nTotal users {total_users}.\nTotal done {done}, {success} success and {failed} failed.",
+            caption=f"✅ **Broadcast Completed!**\n\n⏱ Time taken: `{completed_in}`\n👥 Total users: `{total_users}`\n✅ Success: `{success}`\n❌ Failed: `{failed}`",
             quote=True
         )
     await aiofiles.os.remove('broadcast.txt')
